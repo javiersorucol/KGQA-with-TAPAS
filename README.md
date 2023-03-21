@@ -9,3 +9,9 @@ This project is designed using a microservice architechture, we work with the fo
 - Templates service
 - Answer classification service
 - Main API
+
+To run each service use the following commands:
+Translation service:
+```
+uvicorn translation_service.service:app  --reload --log-config translation_service/Logs/log_config.ini --port 8091
+```
