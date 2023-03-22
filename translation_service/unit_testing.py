@@ -41,8 +41,8 @@ class Translation_testing(unittest.TestCase):
         self.assertIsNotNone(res.get('json').get('mode') , '/translate/ endpoint is failing with a correct input.')
 
     def test_translation_endpoint_unsupported_mode(self):
-        endpoint = '/translate/'
         # testing an unvalid translation mode
+        endpoint = '/translate/'
         res = query_api('post', translation_service_url + endpoint, {}, {}, {
             "text": "¿En dónde murió John Lennon?",
             "mode": "es-e"
@@ -51,6 +51,7 @@ class Translation_testing(unittest.TestCase):
 
     def test_transltion_endpoint_invalid_payload(self):
         # testing not valid object as payload
+        endpoint = '/translate/'
         res = query_api('post', translation_service_url + endpoint, {}, {}, {
             "text": "¿En dónde murió John Lennon?",
             "models": "es-en"
