@@ -22,3 +22,7 @@ uvicorn translation_service.service:app  --reload --log-config translation_servi
 ```
 uvicorn linking_service.service:app  --reload --log-config linking_service/Logs/log_config.ini --port 8092
 ```
+- TAPAS service:
+```
+uvicorn tapas_service.service:app  --reload --log-config tapas_service/Logs/log_config.ini --port 8095
+```
