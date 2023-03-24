@@ -17,14 +17,6 @@ translation_service = dict(config.items('TRANSLATION_SERVICE'))
 translation_service_url = 'http://' + translation_service.get('ip') + ':' + translation_service.get('port')
 
 class Translation_testing(unittest.TestCase):
-    correct_case = {
-        "text": "¿En dónde murió John Lennon?",
-        "mode": "es-en"
-    }
-    error_case = {
-        "text": "¿En dónde murió John Lennon?",
-        "mode": "es-"
-    }
     def test_translation_endpoint_correct_input(self):
         endpoint = '/translate/'
         # testing a correct case:
@@ -35,10 +27,10 @@ class Translation_testing(unittest.TestCase):
         self.assertEqual(res.get('code'), 200 , '/translate/ endpoint is failing with a correct input.')
 
         # testing question text is in the expected answer
-        self.assertIsNotNone(res.get('json').get('text') , '/translate/ endpoint is failing with a correct input.')
+        self.assertIsNotNone(res.get('json').get('text') , '/translate/ endpoint is failing with a correct input, text key not found.')
 
         # test if the translation mode is returned
-        self.assertIsNotNone(res.get('json').get('mode') , '/translate/ endpoint is failing with a correct input.')
+        self.assertIsNotNone(res.get('json').get('mode') , '/translate/ endpoint is failing with a correct input, mode key not found.')
 
     def test_translation_endpoint_unsupported_mode(self):
         # testing an unvalid translation mode
@@ -47,7 +39,7 @@ class Translation_testing(unittest.TestCase):
             "text": "¿En dónde murió John Lennon?",
             "mode": "es-e"
         })
-        self.assertEqual(res.get('code'), 400 , '/translate/ endpoint is failing with a correct input.')
+        self.assertEqual(res.get('code'), 400 , '/translate/ endpoint is not returning error 400 using an unsupported translation mode.')
 
     def test_transltion_endpoint_invalid_payload(self):
         # testing not valid object as payload
@@ -56,7 +48,7 @@ class Translation_testing(unittest.TestCase):
             "text": "¿En dónde murió John Lennon?",
             "models": "es-en"
         })
-        self.assertEqual(res.get('code'), 422 , '/translate/ endpoint is failing with a correct input.')
+        self.assertEqual(res.get('code'), 422 , '/translate/ endpoint is not returning error coe 422 when sending an incorrect DTO.')
 
 
 

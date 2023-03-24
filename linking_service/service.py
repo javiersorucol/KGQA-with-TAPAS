@@ -10,8 +10,6 @@ from DTOs.linking_DTOs import Linked_data_DTO,  Question_DTO
 
 from utils.Request_utils import query_api
 
-import spacy
-
 # Reading the config file
 config_file_path = 'linking_service/Config/Config.ini'
 config = read_config_file(config_file_path)
@@ -21,11 +19,10 @@ falcon_api_headers = dict(config.items('FALCON-API-HEADERS'))
 falcon_api = dict(config.items('FALCON-API'))
 falcon_api_params = dict(config.items('FALCON-API-PARAMS'))
 
-kg_prefix = config['KG_DATA']['prefix']
+open_tapioca_api_headers = dict(config.items('OPEN-TAPIOCA-HEADERS'))
+open_tapioca_api = dict(config.items('OPEN-TAPIOCA-API'))
 
-# SpaCy Open tapioca entity linker initialization
-spaCy_EL = spacy.blank('en')
-spaCy_EL.add_pipe('opentapioca')
+kg_prefix = config['KG_DATA']['prefix']
 
 app = FastAPI()
 
@@ -37,31 +34,12 @@ def link_data(question : Question_DTO):
         # Query the external falcon API
         falcon_response = get_falcon_response(question.__dict__)
 
-        print('1')
-
-        # Use spacy open tapioca to get the entities
-        doc =  spaCy_EL(question.text)
-
-        print('2')
+        # Query the external OpenTapioca API
+        open_tapioca_response = get_open_tapioca_response(question.__dict__)
+        return open_tapioca_response
 
 
-        # Iterate in the found entities to get the expecte information
-        doc_ents = []
-
-        for span in doc.ents:
-            doc_ents.append({
-                'source text' : span.text,
-                'UID' : span.kb_id_
-            })
-            #print((span.text, span.kb_id_, span.label_, span._.description, span._.score))
-
-        print('3')
-        
-        # If SpaCy Open Tapioca did not succed in linking entities, we will use falcon entities
-        if len(doc_ents) == 0:
-            doc_ents = falcon_response.get('entities')
-
-        response['entities'] = doc_ents
+        response['entities'] = []
         response['relations'] = falcon_response.get('relations')
 
         return response
@@ -72,6 +50,22 @@ def link_data(question : Question_DTO):
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail='Unexpected error on server:' + str(e))
+    
+def get_open_tapioca_response(question:dict):
+    try:
+        res = query_api('post', open_tapioca_api.get('endpoint'), json_payload={}, headers=open_tapioca_api_headers, params={
+            'query' : question.get('text'),
+            'lc' : 'en'
+        })
+        
+        return  res
+
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error on server while working with Open Tapioca API. Error:' + str(e))
+
     
 def get_falcon_response(question: dict):
     try:
