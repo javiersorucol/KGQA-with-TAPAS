@@ -17,3 +17,12 @@ To run each service use the following commands:
 ```
 uvicorn translation_service.service:app  --reload --log-config translation_service/Logs/log_config.ini --port 8091
 ```
+- Linking service:
+
+```
+uvicorn linking_service.service:app  --reload --log-config linking_service/Logs/log_config.ini --port 8092
+```
+- TAPAS service:
+```
+uvicorn tapas_service.service:app  --reload --log-config tapas_service/Logs/log_config.ini --port 8095
+```
