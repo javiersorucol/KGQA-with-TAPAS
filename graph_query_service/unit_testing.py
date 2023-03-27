@@ -11,7 +11,7 @@ import unittest
 from utils.Request_utils import query_api
 from utils.Configuration_utils import read_config_file
 
-from graph_query_service.service  import get_value_by_type
+from graph_query_service.service  import get_value_by_type, sparql_query_kg
 
 config = read_config_file('App_config.ini')
 
@@ -19,6 +19,8 @@ graph_query_service = dict(config.items('GRAPH_QUERY_SERVICE'))
 graph_query_url = 'http://' + graph_query_service.get('ip') + ':' + graph_query_service.get('port')
 
 class Graph_Query_testing(unittest.TestCase):
+
+    # /entity/{entity_UID} unit tests
     def test_entity_endpoint_correct_input(self):
         endpoint = '/entity/'
         entity_UID = 'Q750'
@@ -51,8 +53,27 @@ class Graph_Query_testing(unittest.TestCase):
         res = query_api('get', graph_query_url + endpoint + entity_UID, {}, {}, {})
         self.assertEqual(res.get('code'), 400 , '/entity/ endpoint is working with an unexisting entity UID.')
 
+
+    # /entity/classes/{entity_UID} unit tests
+    def test_entity_classes_endpoint_correct_input(self):
+        endpoint = '/entity/classes/'
+        entity_UID = 'Q750'
+        # testing a correct case:
+        res = query_api('get', graph_query_url + endpoint + entity_UID, {}, {}, {})
+
+        self.assertEqual(res.get('code'), 200 , '/entity/clases/ endpoint is failing with a correct input.')
+    
+    def test_entity_classes_endpoint_invalid_entity(self):
+        # testing with an unexisting entity
+        endpoint = '/entity/classes/'
+        entity_UID = '50'
+        res = query_api('get', graph_query_url + endpoint + entity_UID, {}, {}, {})
+        self.assertEqual(res.get('code'), 400 , '/entity/clases/ endpoint is working with an unexisting entity UID.')
+
+
+    # function unit tests
     def test_get_value_by_type_function(self):
-        # case quntity
+        # case quantity
         res = get_value_by_type('quantity', {
             "value": {
                 "amount": "+115",
@@ -110,10 +131,72 @@ class Graph_Query_testing(unittest.TestCase):
             },
             "type": "globecoordinate"
         })
-        print(res)
         self.assertIn(str(-9.67), res, 'get_value_by_type funcion is failing in global-coordinate case, latitude not found.')
         self.assertIn(str(-65.45), res, 'get_value_by_type funcion is failing in global-coordinate case, longitude not found.')
         self.assertIn(str(1), res, 'get_value_by_type funcion is failing in global-coordinate case, altitude not found.')        
+
+    def test_sparql_query_kg_function_incorrect_inputs(self):
+        # incorrect SPARQL
+        res = sparql_query_kg('SELECT DISTINCT ?class WHERE  wd:$entity_UID wdt:$class_property_UID ?class .}', {'entity_UID' : 'Q750', 'class_property_UID' : 'P31'})
+        self.assertEqual(res.get('code'), 400, ' Incorrect SPARQL is not reflecting error code 400')
+        
+        # not enough inputs
+        res = sparql_query_kg('SELECT DISTINCT ?class WHERE  { wd:$entity_UID wdt:$class_property_UID ?class .}', {'entity_UID' : 'Q750'})
+        self.assertEqual(res.get('code'), 500, ' Not enough parameters for the SPRAQL query error is not reflecting error code 500')
+
+    def test_sparql_query_kg_function_config_sparqls(self):
+        # Verifying all the sparqls
+        local_config = read_config_file('graph_query_service/Config/Config.ini')
+
+        classes_sparql = local_config['SPARQL']['classes']
+        subclasses_sparql = local_config['SPARQL']['subclasses']
+        union_sparql = local_config['SPARQL']['union']
+        extra_properties_sparql = local_config['SPARQL']['extra_properties']
+        parents_sparql = local_config['SPARQL']['parents']
+        properties_sparql = local_config['SPARQL']['properties']
+        table_sparql = local_config['SPARQL']['table']
+
+        all_params = {
+            'class_property_UID' : local_config['KNOWLEDGE_GRAPH']['class_property_UID'],
+            'subclass_property_UID' : local_config['KNOWLEDGE_GRAPH']['subclass_property_UID'],
+            'union_of_property_UID' : local_config['KNOWLEDGE_GRAPH']['union_property_UID'],
+            'extra_properties_UID' : local_config['KNOWLEDGE_GRAPH']['extra_properties_UID'],
+            'class_properties_UID' : local_config['KNOWLEDGE_GRAPH']['class_properties_UID'],
+            'entity_UID': 'Q750',
+            'class_UID' : 'Q6256',
+            'property_UID' : 'P6',
+            'properties_declaration' : '',
+            'properties_list' : '',
+            'filter_conditions' : '1',
+            'limit' : '10'
+        }
+
+        res = sparql_query_kg(classes_sparql, all_params)
+        self.assertEqual(res.get('code'), 200, ' classes_sparql notworking.')
+
+        res = sparql_query_kg(subclasses_sparql, all_params)
+        self.assertEqual(res.get('code'), 200, ' subclasses_sparql notworking.')
+
+        res = sparql_query_kg(union_sparql, all_params)
+        self.assertEqual(res.get('code'), 200, ' union_sparql notworking.')
+
+        res = sparql_query_kg(extra_properties_sparql, all_params)
+        self.assertEqual(res.get('code'), 200, ' extra_properties_sparql notworking.')
+
+        res = sparql_query_kg(parents_sparql, all_params)
+        self.assertEqual(res.get('code'), 200, ' parents_sparql notworking.')
+
+        res = sparql_query_kg(properties_sparql, all_params)
+        self.assertEqual(res.get('code'), 200, ' properties_sparql notworking.')
+
+        res = sparql_query_kg(table_sparql, all_params)
+        self.assertEqual(res.get('code'), 200, ' table_sparql notworking.')
+
+
+
+        
+
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,8 +3,9 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from fastapi import FastAPI, HTTPException
-from utils.Request_utils import query_api
+from string import Template
 
+from utils.Request_utils import query_api
 from utils.Configuration_utils import read_config_file
 
 # Reading the config file
@@ -86,6 +87,28 @@ def get_entity_data(entity_UID : str):
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unknown error while retrieving the information for entity: ' + entity_UID + '. ' + str(e))
 
+# Get Entity Classes
+@app.get('/entity/classes/{entity_UID}')
+def get_entity_classes(entity_UID : str):
+    try:
+
+        res = sparql_query_kg(classes_sparql, { 'entity_UID' : entity_UID, 'class_property_UID' : class_property_UID })
+        
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Wikidata External API error. Code ' + str(res.get('code')) + " : " + res.get('text'))
+
+        # if there are no result
+        if len(res.get('json').get('results').get('bindings')) == 0:
+            raise HTTPException(status_code=400, detail='Error, entity not found, or there are not classes related to this entity. Response: ' + str(res))
+        
+        return [ x.get('class').get('value').replace(entity_prefix,'') for x in res.get('json').get('results').get('bindings')]
+    
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unknown error while retrieving classes for entity: ' + entity_UID + '. ' + str(e))
+
 def get_value_by_type(data_type: str, value: dict):
     try:
         # how to get the value depending on the data type
@@ -106,3 +129,15 @@ def get_value_by_type(data_type: str, value: dict):
             return None
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unknown while obtaining the value. Data type: ' + data_type + '. Value src: ' + str(value) + ' Error: ' + str(e))
+
+def sparql_query_kg(sparql: str, sparql_params:dict):
+    try:
+        sparql_template = Template(sparql)
+        sparql_query = sparql_template.substitute(sparql_params)
+        kg_query_params = {'query' : sparql_query, 
+                        'format' : 'json'}
+        res = query_api('get', query_endpoint, { 'User-Agent' : 'SubgraphBot/0.1, bot for obtention of class subgraphs (javiersorucol1@upb.edu)' }, kg_query_params, {})
+
+        return res
+    except Exception as e:
+        return { 'code': 500, 'json' : None, 'text': 'Error while preparing the SPARQL query. Error: ' + str(e) }
