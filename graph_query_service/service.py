@@ -51,12 +51,16 @@ app = FastAPI()
 #endpoints
 @app.get('/entity/{entity_UID}')
 def get_entity_data(entity_UID : str):
-    res = query_api('get',(entity_prefix  + entity_UID), entity_query_headers, entity_query_params, entity_query_payload, number_of_attempts)
-    
-    if res.get('code') != 200:
-        raise HTTPException(status_code=502, detail='Wikidata External API error. Code ' + res.get('status_code') + " : " + res.get('text'))
-    
     try:
+        res = query_api('get',(entity_prefix  + entity_UID), entity_query_headers, entity_query_params, entity_query_payload, number_of_attempts)
+
+        if res.get('code') != 200:
+            if res.get('code') == 400:
+                raise HTTPException(status_code=400, detail='Error, entity not found. Code ' + str(res.get('code')) + " : " + res.get('text'))
+            else:
+                raise HTTPException(status_code=502, detail='Wikidata External API error. Code ' + str(res.get('code')) + " : " + res.get('text'))
+
+    
         query_dto = res.get('json').get('entities').get(entity_UID)
         entity_dto = {}
         entity_dto['label'] = query_dto.get('labels').get('en').get('value')
@@ -93,14 +97,7 @@ def get_value_by_type(data_type: str, value: dict):
             elif data_type == 'monolingualtext':
                 return value.get('value').get('text')
             elif data_type == 'quantity':
-                #unit = ''
-                #if value.get('value').get('unit') is not None:
-                #    unit = value.get('value').get('unit')
-                #    unit = unit if entity_prefix not in unit else get_entity_data(unit.replace(entity_prefix,'')).get('label')
                 return (value.get('value').get('amount')) 
-                    #(' unit: ' +  unit) +  
-                    #(' upper bound: ' + value.get('value').get('upperBound') if value.get('value').get('upperBound') is not None else '' ) +
-                    #(' lower bound: ' + value.get('value').get('lowerBound') if value.get('value').get('lowerBound') is not None else '' ) )
             elif data_type == 'globe-coordinate':
                 return 'Latitud: ' + str(value.get('value').get('latitude')) + ' Longitud: ' + str(value.get('value').get('longitude')) + ' Altitud: ' + str(value.get('value').get('altitude')) + ' Presición: ' + str(value.get('value').get('precision')) + ' Planeta: ' + value.get('value').get('globe')
             else:
