@@ -70,8 +70,54 @@ class Graph_Query_testing(unittest.TestCase):
         res = query_api('get', graph_query_url + endpoint + entity_UID, {}, {}, {})
         self.assertEqual(res.get('code'), 400 , '/entity/clases/ endpoint is working with an unexisting entity UID.')
 
+    # get class template endpoint
+    def test_class_template_endpoint_correct_case(self):
+        endpoint = '/class/template/'
+        class_UID = 'Q6256'
+        res = query_api('get', graph_query_url + endpoint + class_UID, {}, {}, {})
+        self.assertEqual(res.get('code'), 200 , '/class/template/ endpoint is not working with correct data.')
 
-    # function unit tests
+        # check result contains frequency
+        self.assertIsNotNone(res.get('json').get('frequency'), 'Frequency key is missing in/class/template/  endpoint response.')
+
+        # check result contains subclasses
+        self.assertIsNotNone(res.get('json').get('subclasses'), 'Subclasses key is missing in/class/template/  endpoint response.')
+
+        # check result contains properties
+        self.assertIsNotNone(res.get('json').get('properties'), 'Properties key is missing in/class/template/  endpoint response.')        
+        
+        # check banned dataa type property is not in the properties list
+        self.assertIsNone(res.get('json').get('properties').get('P1566'), 'Banned data  type "ExternalID" property found in the template on /class/template/ endpoint.')
+
+    def test_class_template_union_class_case(self):
+        endpoint = '/class/template/'
+        class_UID = 'Q187449'
+        res = query_api('get', graph_query_url + endpoint + class_UID, {}, {}, {})
+        self.assertEqual(res.get('code'), 200 , '/class/template/ endpoint is not working with correct union class.')
+
+        # check the heritage class properties are returned
+        self.assertIsNotNone(res.get('json').get('properties').get('P1435'), 'Expected properties in union class are missing in /class/template/ endpoint.')
+
+    def test_class_template_parent_class_case(self):
+        endpoint = '/class/template/'
+        class_UID = 'Q1549591'
+        res = query_api('get', graph_query_url + endpoint + class_UID, {}, {}, {})
+        self.assertEqual(res.get('code'), 200 , '/class/template/ endpoint is not working with correct class that inherited its properties.')
+
+        # check result contains properties
+        self.assertNotEqual(len(res.get('json').get('properties')), 0, 'Properties are not inherited in /class/template/ endpoint.')
+        
+    def test_class_template_parent_class_extra_properties_case(self):
+        endpoint = '/class/template/'
+        class_UID = 'Q5119'
+        res = query_api('get', graph_query_url + endpoint + class_UID, {}, {}, {})
+        self.assertEqual(res.get('code'), 200 , '/class/template/ endpoint is not working with correct class that inherited its properties and have its own properties.')
+
+        # check if result contains clas exclusive property
+        self.assertIsNotNone(res.get('json').get('properties').get('P1376'), 'Expected non inherited properties are missing in /class/template/ endpoint.')
+ 
+
+    ### function unit tests
     def test_get_value_by_type_function(self):
         # case quantity
         res = get_value_by_type('quantity', {

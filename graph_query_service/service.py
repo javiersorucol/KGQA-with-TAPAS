@@ -49,7 +49,8 @@ table_max_lenght = config['SERVER_PARAMS']['table_max_lenght']
 
 app = FastAPI()
 
-#endpoints
+### endpoints
+# Get entity info
 @app.get('/entity/{entity_UID}')
 def get_entity_data(entity_UID : str):
     try:
@@ -109,6 +110,163 @@ def get_entity_classes(entity_UID : str):
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unknown error while retrieving classes for entity: ' + entity_UID + '. ' + str(e))
 
+# Get a class template data
+@app.get('/class/template/{class_UID}')
+def get_class_template( class_UID: str):
+    try:
+        template = { 'frequency': 1,
+        'subclasses' : get_class_subclasses(class_UID),
+        'properties': get_class_properties(class_UID) 
+        }
+        return template
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' template. Error: ' + str(e))
+
+
+### Functions
+def get_class_properties(class_UID : str):
+    try:
+        # Using the properties for this class property to look for properties
+        res = sparql_query_kg(properties_sparql, { 'class_UID' : class_UID, 'class_properties_UID' : class_properties_UID })
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +'properties, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
+        
+        res = res.get('json')
+        class_properties_dict = {}
+        
+        # adding properties
+        for prop in res.get('results').get('bindings'):
+            class_properties_dict[prop.get('prop').get('value').replace(entity_prefix, '')] = { 
+                'label' : prop.get('propLabel').get('value'),
+                'type' : prop.get('propType').get('value').replace(ontology_prefix, '') 
+            }
+        
+        # If no properties were found, search for compound classes 
+        if len(class_properties_dict.items()) == 0:
+            union_values = get_class_union_classes(class_UID)
+            props_source = []
+            props = {}
+            if len(union_values) > 0:
+                props_source = union_values
+                
+            else:
+                # check parent clases
+                props_source = get_class_parents(class_UID)
+                
+                # update if there is extra properties in this class (properties that are not inherit form the parent class)
+                props.update(get_class_extra_properties(class_UID))
+
+            props.update(get_related_classes_props(props_source))
+            class_properties_dict.update(props)
+        
+        # Remove no valid data types
+        class_properties_dict = dict(filter(lambda x: x[1]['type'] not in banned_data_types, class_properties_dict.items()))
+
+        return class_properties_dict
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' total properties. Error: ' + str(e))
+
+
+def get_class_parents(class_UID : str):
+    try:
+        res = sparql_query_kg(parents_sparql, { 'class_UID' : class_UID, 'subclass_property_UID' : subclass_property_UID })
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +' parent classes, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
+        
+        return [ x.get('parent').get('value').replace(entity_prefix,'') for x in res.get('json').get('results').get('bindings')]
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' parent classes. Error: ' + str(e))
+
+def get_class_extra_properties(class_UID : str):
+    # Get class extra properties
+    try:
+        res = sparql_query_kg(extra_properties_sparql, { 'class_UID' : class_UID, 'extra_properties_UID' : extra_properties_UID })
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +' extra properties, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
+
+        inherited_properties_dict = {}
+        for prop in res.get('json').get('results').get('bindings'):
+            inherited_properties_dict[prop.get('prop').get('value').replace(entity_prefix, '')] = {
+                'label' : prop.get('propLabel').get('value'),
+                'type' : prop.get('propType').get('value').replace(ontology_prefix, '')
+            }
+        
+        return inherited_properties_dict
+    
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' extra properties. Error: ' + str(e))
+
+
+def get_class_union_classes(class_UID : str):
+    try:
+        res = sparql_query_kg(union_sparql, { 'class_UID' : class_UID, 'union_of_property_UID' : union_property_UID })
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +' union classes, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
+        
+        return [ x.get('class').get('value').replace(entity_prefix,'') for x in res.get('json').get('results').get('bindings')]
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' union classes. Error: ' + str(e))
+
+def get_class_subclasses(class_UID : str):
+    try:
+        res = sparql_query_kg(subclasses_sparql, { 'class_UID' : class_UID, 'subclass_property_UID' : subclass_property_UID })
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +' subclasses, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
+        
+        return [ x.get('subclass').get('value').replace(entity_prefix,'') for x in res.get('json').get('results').get('bindings')]
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' subclasses. Error: ' + str(e))
+
+def get_related_classes_props(related_classes):
+    # get the relted classes properties
+    try:
+        # Query to get the list of class properties and its info
+        props = {}
+        for source in related_classes:
+            res = sparql_query_kg(properties_sparql, { 'class_UID' : source, 'class_properties_UID' : class_properties_UID })
+            if res.get('code') != 200:
+                raise HTTPException(status_code=502, detail='Error obtaining ' + source +' related classes properties. Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
+            
+            related_properties_dict = {}
+            for prop in res.get('json').get('results').get('bindings'):
+                related_properties_dict[prop.get('prop').get('value').replace(entity_prefix, '')] = {
+                    'label' : prop.get('propLabel').get('value'),
+                    'type' : prop.get('propType').get('value').replace(ontology_prefix, '') }
+            props.update(related_properties_dict)
+            #templates[source] = { 'freq' : 1, 'subclasses' : self.get_class_subclasses(source), 'props' : props }
+        
+        return props
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + str(related_classes) + ' properties. Error: ' + str(e))
+
+
 def get_value_by_type(data_type: str, value: dict):
     try:
         # how to get the value depending on the data type
@@ -127,6 +285,7 @@ def get_value_by_type(data_type: str, value: dict):
                 return value.get('value')
         else:
             return None
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unknown while obtaining the value. Data type: ' + data_type + '. Value src: ' + str(value) + ' Error: ' + str(e))
 
@@ -139,5 +298,6 @@ def sparql_query_kg(sparql: str, sparql_params:dict):
         res = query_api('get', query_endpoint, { 'User-Agent' : 'SubgraphBot/0.1, bot for obtention of class subgraphs (javiersorucol1@upb.edu)' }, kg_query_params, {})
 
         return res
+    
     except Exception as e:
         return { 'code': 500, 'json' : None, 'text': 'Error while preparing the SPARQL query. Error: ' + str(e) }
