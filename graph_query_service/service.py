@@ -4,9 +4,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from fastapi import FastAPI, HTTPException
 from string import Template
+from typing import List
 
 from utils.Request_utils import query_api
 from utils.Configuration_utils import read_config_file
+
+from DTOs.graph_query_DTOs import Table_templates_DTO, Table_template_DTO,Table_template_property_DTO
+from DTOs.DTO_factory import wikidata_to_Table
 
 # Reading the config file
 config_file_path = 'graph_query_service/Config/Config.ini'
@@ -67,18 +71,18 @@ def get_entity_data(entity_UID : str):
         entity_dto = {}
         entity_dto['label'] = query_dto.get('labels').get('en').get('value')
         entity_dto['UID'] = entity_UID
-        entity_dto['props'] = {}
+        entity_dto['properties'] = {}
 
         for key, value in query_dto.get('claims').items():
             # initialize the entity properties, the data type is the same for all the property instances
             data_type = value[0].get('mainsnak').get('datatype')
-            entity_dto['props'][key] =  { 
+            entity_dto['properties'][key] =  { 
                                             'data_type': data_type,
                                             'values': []
                                         }
             for instance in value:
                 # for every instance of the property append a value
-                entity_dto['props'][key]['values'].append(get_value_by_type(data_type, instance.get('mainsnak').get('datavalue')))
+                entity_dto['properties'][key]['values'].append(get_value_by_type(data_type, instance.get('mainsnak').get('datavalue')))
 
         return entity_dto
     
@@ -126,8 +130,131 @@ def get_class_template( class_UID: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' template. Error: ' + str(e))
 
+# Fill a table template endpoint
+@app.post('/templates/fill/')
+def fill_templates(templates: Table_templates_DTO):
+    try:
+        tables = {}
+        entities_data = {}
+        entities_list = []
+
+        # using entities to filter tables information
+        for entity in templates.entities_UIDs:
+            # get entity property values
+            entity_info = get_entity_data(entity)
+            entities_list.append(entity_info)
+
+            for key,val in entity_info.get('properties').items():
+            # Save property values to filter, only in properties that work with other wikidata items
+                if val.get('data_type') == 'wikibase-item':
+                    entities_data[key] = list(set(([] if entities_data.get(key) is None else entities_data.get(key)) + val.get('values')))
+    
+
+        for template in templates.templates:
+            tables[template.UID] = fill_template(template, entities_data, entities_list)
+        return tables
+        
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpect error while generating the tables. Error: ' + str(e))
+
 
 ### Functions
+def fill_template(class_template: Table_template_DTO, entities_data: dict, entities_list: list):
+    def get_filter_conditions(template:Table_template_DTO, entities_data:dict):
+        # filtering to use only properties related to wikibaseitens
+        template_filter_properties = list(filter((lambda x: x.type == 'WikibaseItem'), template.properties))
+        template_properties_UIDs = [property.UID for property in template_filter_properties ]
+        filter_properties = dict(filter( lambda x: x[0] in template_properties_UIDs,entities_data.items()))
+        # If there are no filter properties (shouldn't be the case), we will return 1=1 to keep all results
+        if len(filter_properties) == 0:
+            return '1=1'
+        
+        filter_conditions = []
+        for key, values in filter_properties.items():
+            for val in values:
+                filter_conditions.append('?' + key + ' = wd:' + val)
+
+        return ' || '.join(filter_conditions)
+
+    def get_properties_declaration(properties: List[Table_template_property_DTO]):
+        prop_UIDs = ['?' + property.UID for property in properties]
+        return ' '.join(prop_UIDs)
+
+    def get_properties_list(properties: List[Table_template_property_DTO]):
+        properties_list = [Template(table_property_template).substitute({'property_UID' : property.UID }) for property in properties]
+        return ' '.join(properties_list)
+    
+    def class_match(entity : dict, class_UID: str):
+        # Look if entity is relted to class by it's class_UID
+        try:
+            entity_classes = next( filter((lambda x: x[0] == class_property_UID) , entity.get('properties').items()) )[1]
+            if class_UID in entity_classes.get('values'):
+                return True
+            else:
+                return False
+
+
+        except Exception as e:
+        # If by some reason we can't find the entity classes, we will return false
+            return False
+    try:
+        # We'll generate the strings to fill the sparql template to query the information for this wikidata class
+        properties_declaration = get_properties_declaration(class_template.properties)
+        properties_list = get_properties_list(class_template.properties)
+        filter_conditions = get_filter_conditions(class_template, entities_data)
+
+        res = sparql_query_kg(table_sparql, {
+            'properties_declaration' : properties_declaration,
+            'class_property_UID' : class_property_UID,
+            'class_UID' : class_template.UID,
+            'properties_list' : properties_list,
+            'limit' : table_max_lenght,
+            'filter_conditions' : filter_conditions
+        })
+
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Wikidata Query API error. Code ' + str(res.get('code')) + " : " + res.get('text'))
+
+        # Let's change the response to match the DTO format we require
+
+        table = wikidata_to_Table(res.get('json'))
+
+        # Now we'll make sure the entities of the question related to this class are added to the table data
+        related_entities = list(filter((lambda x: class_match(x, class_template.UID)), entities_list))
+    
+        for entity in related_entities:
+            table_entity = list(filter((lambda x: x.get('item').get('value') == (entity_prefix + entity.get('UID')) ), table))
+            if len(table_entity) == 0:
+                table_entity = {
+                    'item': {
+                        'type': 'uri',
+                        'value': (entity_prefix + entity.get('UID'))
+                    },
+                    'itemLabel': {
+                        'xml:lang': 'en',
+                        'type': 'literal',
+                        'value': entity.get('label')
+                    }
+                }
+
+                for property in class_template.properties:
+                    if property.UID in entity.get('properties').keys():
+                        table_entity[property.UID] = entity.get('properties').get(property.UID)
+                        table_entity[property.UID]['type'] = table_entity[property.UID].pop('data_type')
+            
+                table.append(table_entity)
+
+        return table
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unknown Error presented while filling template: ' + class_template.UID + '. Error: ' + str(e))
+
 def get_class_properties(class_UID : str):
     try:
         # Using the properties for this class property to look for properties
@@ -139,29 +266,29 @@ def get_class_properties(class_UID : str):
         class_properties_dict = {}
         
         # adding properties
-        for prop in res.get('results').get('bindings'):
-            class_properties_dict[prop.get('prop').get('value').replace(entity_prefix, '')] = { 
-                'label' : prop.get('propLabel').get('value'),
-                'type' : prop.get('propType').get('value').replace(ontology_prefix, '') 
+        for property in res.get('results').get('bindings'):
+            class_properties_dict[property.get('prop').get('value').replace(entity_prefix, '')] = { 
+                'label' : property.get('propLabel').get('value'),
+                'type' : property.get('propType').get('value').replace(ontology_prefix, '') 
             }
         
         # If no properties were found, search for compound classes 
         if len(class_properties_dict.items()) == 0:
             union_values = get_class_union_classes(class_UID)
-            props_source = []
-            props = {}
+            properties_source = []
+            properties = {}
             if len(union_values) > 0:
-                props_source = union_values
+                properties_source = union_values
                 
             else:
                 # check parent clases
-                props_source = get_class_parents(class_UID)
+                properties_source = get_class_parents(class_UID)
                 
                 # update if there is extra properties in this class (properties that are not inherit form the parent class)
-                props.update(get_class_extra_properties(class_UID))
+                properties.update(get_class_extra_properties(class_UID))
 
-            props.update(get_related_classes_props(props_source))
-            class_properties_dict.update(props)
+            properties.update(get_related_classes_properties(properties_source))
+            class_properties_dict.update(properties)
         
         # Remove no valid data types
         class_properties_dict = dict(filter(lambda x: x[1]['type'] not in banned_data_types, class_properties_dict.items()))
@@ -197,10 +324,10 @@ def get_class_extra_properties(class_UID : str):
             raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +' extra properties, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
 
         inherited_properties_dict = {}
-        for prop in res.get('json').get('results').get('bindings'):
-            inherited_properties_dict[prop.get('prop').get('value').replace(entity_prefix, '')] = {
-                'label' : prop.get('propLabel').get('value'),
-                'type' : prop.get('propType').get('value').replace(ontology_prefix, '')
+        for property in res.get('json').get('results').get('bindings'):
+            inherited_properties_dict[property.get('prop').get('value').replace(entity_prefix, '')] = {
+                'label' : property.get('propLabel').get('value'),
+                'type' : property.get('propType').get('value').replace(ontology_prefix, '')
             }
         
         return inherited_properties_dict
@@ -240,25 +367,25 @@ def get_class_subclasses(class_UID : str):
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' subclasses. Error: ' + str(e))
 
-def get_related_classes_props(related_classes):
+def get_related_classes_properties(related_classes):
     # get the relted classes properties
     try:
         # Query to get the list of class properties and its info
-        props = {}
+        properties = {}
         for source in related_classes:
             res = sparql_query_kg(properties_sparql, { 'class_UID' : source, 'class_properties_UID' : class_properties_UID })
             if res.get('code') != 200:
                 raise HTTPException(status_code=502, detail='Error obtaining ' + source +' related classes properties. Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
             
             related_properties_dict = {}
-            for prop in res.get('json').get('results').get('bindings'):
-                related_properties_dict[prop.get('prop').get('value').replace(entity_prefix, '')] = {
-                    'label' : prop.get('propLabel').get('value'),
-                    'type' : prop.get('propType').get('value').replace(ontology_prefix, '') }
-            props.update(related_properties_dict)
+            for property in res.get('json').get('results').get('bindings'):
+                related_properties_dict[property.get('prop').get('value').replace(entity_prefix, '')] = {
+                    'label' : property.get('propLabel').get('value'),
+                    'type' : property.get('propType').get('value').replace(ontology_prefix, '') }
+            properties.update(related_properties_dict)
             #templates[source] = { 'freq' : 1, 'subclasses' : self.get_class_subclasses(source), 'props' : props }
         
-        return props
+        return properties
     
     except HTTPException as e:
         raise e

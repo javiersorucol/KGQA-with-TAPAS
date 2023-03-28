@@ -38,13 +38,13 @@ class Graph_Query_testing(unittest.TestCase):
         self.assertIsNotNone(res.get('json').get('label') , '/entity/ endpoint is failing with a correct input, label key not found.')
 
         # checking if properties are returned
-        self.assertIsNotNone(res.get('json').get('props') , '/entity/ endpoint is failing with a correct input, props key not found.')
+        self.assertIsNotNone(res.get('json').get('properties') , '/entity/ endpoint is failing with a correct input, properties key not found.')
 
-        self.assertGreater(len(res.get('json').get('props').keys()), 0, '/entity/endpoint is not returning properties')
+        self.assertGreater(len(res.get('json').get('properties').keys()), 0, '/entity/endpoint is not returning properties')
 
         # check properties have a type and a value
-        self.assertIsNotNone(res.get('json').get('props').get('P30').get('data_type') , '/entity/ endpoint is failing with a correct input, property P30 data_type not found.')
-        self.assertIsNotNone(res.get('json').get('props').get('P30').get('data_type') , '/entity/ endpoint is failing with a correct input, property P30 value not found.')
+        self.assertIsNotNone(res.get('json').get('properties').get('P30').get('data_type') , '/entity/ endpoint is failing with a correct input, property P30 data_type not found.')
+        self.assertIsNotNone(res.get('json').get('properties').get('P30').get('data_type') , '/entity/ endpoint is failing with a correct input, property P30 value not found.')
 
     def test_entity_endpoint_invalid_entity(self):
         # testing with an unexisting entity
@@ -116,6 +116,57 @@ class Graph_Query_testing(unittest.TestCase):
         # check if result contains clas exclusive property
         self.assertIsNotNone(res.get('json').get('properties').get('P1376'), 'Expected non inherited properties are missing in /class/template/ endpoint.')
  
+    # fill template endpoint
+    def test_fill_templates_correct_case(self):
+        endpoint = '/templates/fill/'
+        res = query_api('post', graph_query_url + endpoint, {}, {}, {
+            "templates": [
+                {
+                "UID": "Q515",
+                "properties": [
+                    {
+                    "UID": "P17",
+                    "label": "country",
+                    "type": "WikibaseItem"
+                    },
+            {
+                    "UID": "P2046",
+                    "label": "area",
+                    "type": "Quantity"
+                    }
+                ]
+                }
+            ],
+            "entities_UIDs": [
+                "Q60", "Q2807"
+            ]
+        })
+        self.assertEqual(res.get('code'), 200 , '/templates/fill/ endpoint is not working with a correct input.')
+
+    def test_fill_templates_incorrect_input(self):
+        endpoint = '/templates/fill/'
+        res = query_api('post', graph_query_url + endpoint, {}, {}, {
+            "templates": [
+                {
+                "UID": "Q515",
+                "properties": [
+                    {
+                    "UID": "P17",
+                    "label": "country",
+                    "type": "WikibaseItem"
+                    },
+            {
+                    "UID": "P2046",
+                    "label": "area",
+                    "type": "Quantity"
+                    }
+                ]
+                }
+            ]
+        })
+        self.assertEqual(res.get('code'), 422 , '/templates/fill/ endpoint allows incorrect input.')
+
+
 
     ### function unit tests
     def test_get_value_by_type_function(self):
