@@ -44,7 +44,7 @@ class Graph_Query_testing(unittest.TestCase):
 
         # check properties have a type and a value
         self.assertIsNotNone(res.get('json').get('properties').get('P30').get('data_type') , '/entity/ endpoint is failing with a correct input, property P30 data_type not found.')
-        self.assertIsNotNone(res.get('json').get('properties').get('P30').get('data_type') , '/entity/ endpoint is failing with a correct input, property P30 value not found.')
+        self.assertIsNotNone(res.get('json').get('properties').get('P30').get('value') , '/entity/ endpoint is failing with a correct input, property P30 value not found.')
 
     def test_entity_endpoint_invalid_entity(self):
         # testing with an unexisting entity
