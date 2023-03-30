@@ -18,6 +18,8 @@ def query_api(method, url, headers, params, json_payload, attempts = 1):
         return { 'code': res.status_code, 'json' : res.json() }
     
     except Exception as e:
-        print('Error with request: method: ', method, ', url: ', url, ', headers: ', headers, ', params: ', params, ', json_payload: ', json_payload)
+        print('---------------------------------------------------------------------------------')
+        print('Error with request, method: ', method, ', url: ', url, ', headers: ', headers, ', params: ', params, ', json_payload: ', json_payload)
         print('Error: ', str(e))
+        print('---------------------------------------------------------------------------------')
         return { 'code': res.status_code, 'json' : None, 'text': res.text }
