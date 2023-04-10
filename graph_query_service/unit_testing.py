@@ -1,4 +1,4 @@
-# Before running this script make sure to run the translation Service
+# Before running this script make sure to run the graph query Service
 import sys
 import os
   
