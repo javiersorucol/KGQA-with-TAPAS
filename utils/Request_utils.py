@@ -1,6 +1,6 @@
 import requests
 
-def query_api(method, url, headers, params, json_payload, attempts = 1):
+def query_api(method:str, url:str, headers:dict, params:dict, json_payload:dict, attempts:int = 1):
     try:
         attempt = 0
         res = None
