@@ -88,7 +88,7 @@ def get_entity_classes(entity_UID:str):
         res = query_api('get', url, {}, {}, {})
 
         if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Graph Query service returned an error. Code: ' + str(res.get('code')) + ' . Error: ' + res.get('text'))
+            raise HTTPException(status_code=502, detail='Graph Query service returned an error while retrieving information of entity ' + entity_UID + ' . Code: ' + str(res.get('code')) + ' . Error: ' + res.get('text'))
 
         return res.get('json')
 
@@ -96,8 +96,25 @@ def get_entity_classes(entity_UID:str):
         raise e
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while querying graph query service: ' + str(e))
+        raise HTTPException(status_code=500, detail='Unexpected error while obtaining informtion from entity ' + entity_UID + ': ' + str(e))
 
+def generate_class_template(class_UID:str):
+    try:
+        global graph_query_service
+
+        url = get_service_url(graph_query_service, 'class_template_endpoint') + class_UID
+        res = query_api('get', url, {}, {}, {})
+
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Graph Query service returned an error while generating class template for: ' + class_UID + '. Code: ' + str(res.get('code')) + ' . Error: ' + res.get('text'))
+
+        return res.get('json')
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while generating class template for class ' + class_UID + ': ' + str(e))
 
 def get_service_url(service:dict, enpoint:str):
     try:    
