@@ -80,6 +80,25 @@ def link_graph_elements(query:str):
         raise HTTPException(status_code=500, detail='Unexpected error while querying linking service: ' + str(e))
 
 
+def get_entity_classes(entity_UID:str):
+    try:
+        global graph_query_service
+        
+        url = get_service_url(graph_query_service, 'entity_classes_endpoint') + entity_UID
+        res = query_api('get', url, {}, {}, {})
+
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Graph Query service returned an error. Code: ' + str(res.get('code')) + ' . Error: ' + res.get('text'))
+
+        return res.get('json')
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying graph query service: ' + str(e))
+
+
 def get_service_url(service:dict, enpoint:str):
     try:    
         url = service.get('ip') + ':' + service.get('port') + service.get(enpoint)

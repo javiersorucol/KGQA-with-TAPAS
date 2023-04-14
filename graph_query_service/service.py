@@ -51,11 +51,16 @@ banned_data_types = config.get('KNOWLEDGE_GRAPH', 'banned_data_types').split()
 number_of_attempts = int(config['SERVER_PARAMS']['number_of_attempts'])
 table_max_lenght = config['SERVER_PARAMS']['table_max_lenght']
 
+# Reding the service configurations
+app_config_file_path = 'App_config.ini'
+app_config = read_config_file(app_config_file_path)
+graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
+
 app = FastAPI()
 
 ### endpoints
 # Get entity info
-@app.get('/entity/{entity_UID}')
+@app.get(graph_query_service.get('entity_endpoint') + '{entity_UID}')
 def get_entity_data(entity_UID : str):
     try:
         res = query_api('get',(entity_prefix  + entity_UID), entity_query_headers, entity_query_params, entity_query_payload, number_of_attempts)
@@ -93,7 +98,7 @@ def get_entity_data(entity_UID : str):
         raise HTTPException(status_code=500, detail='Unknown error while retrieving the information for entity: ' + entity_UID + '. ' + str(e))
 
 # Get Entity Classes
-@app.get('/entity/classes/{entity_UID}')
+@app.get(graph_query_service.get('entity_classes_endpoint') + '{entity_UID}')
 def get_entity_classes(entity_UID : str):
     try:
 
@@ -115,7 +120,7 @@ def get_entity_classes(entity_UID : str):
         raise HTTPException(status_code=500, detail='Unknown error while retrieving classes for entity: ' + entity_UID + '. ' + str(e))
 
 # Get a class template data
-@app.get('/class/template/{class_UID}')
+@app.get(graph_query_service.get('class_template_endpoint') + '{class_UID}')
 def get_class_template( class_UID: str):
     try:
         template = { 'frequency': 1,
@@ -131,7 +136,7 @@ def get_class_template( class_UID: str):
         raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' template. Error: ' + str(e))
 
 # Fill a table template endpoint
-@app.post('/templates/fill/')
+@app.post(graph_query_service.get('fill_template_endpoint'))
 def fill_templates(templates: Table_templates_DTO):
     try:
         tables = {}

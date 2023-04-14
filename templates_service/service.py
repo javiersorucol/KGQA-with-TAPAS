@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
 from utils.Json_utils import read_json, save_json
-from utils.Request_utils import translate, link_graph_elements
+from utils.Request_utils import translate, link_graph_elements, get_entity_classes
 
 from DTOs.templates_DTOs import QALD_json_DTO
 from DTOs.linking_DTOs import Question_DTO
@@ -28,5 +28,5 @@ app = FastAPI()
 
 @app.post('/test/')
 def test():
-    return link_graph_elements('Who is the president Bolivia?')
+    return get_entity_classes('Q750')
 

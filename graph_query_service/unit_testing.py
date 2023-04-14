@@ -19,13 +19,15 @@ graph_query_service = dict(config.items('GRAPH_QUERY_SERVICE'))
 graph_query_url = 'http://' + graph_query_service.get('ip') + ':' + graph_query_service.get('port')
 
 class Graph_Query_testing(unittest.TestCase):
-
+    entity_endpoint = graph_query_service.get('entity_endpoint')
+    entity_classes_endpoint = graph_query_service.get('entity_classes_endpoint')
+    class_template_endpoint = graph_query_service.get('class_template_endpoint')
+    fill_template_endpoint = graph_query_service.get('fill_template_endpoint')
     # /entity/{entity_UID} unit tests
     def test_entity_endpoint_correct_input(self):
-        endpoint = '/entity/'
         entity_UID = 'Q750'
         # testing a correct case:
-        res = query_api('get', graph_query_url + endpoint + entity_UID, {}, {}, {})
+        res = query_api('get', graph_query_url + self.entity_endpoint + entity_UID, {}, {}, {})
 
         self.assertEqual(res.get('code'), 200 , '/entity/ endpoint is failing with a correct input.')
 
@@ -44,37 +46,33 @@ class Graph_Query_testing(unittest.TestCase):
 
         # check properties have a type and a value
         self.assertIsNotNone(res.get('json').get('properties').get('P30').get('data_type') , '/entity/ endpoint is failing with a correct input, property P30 data_type not found.')
-        self.assertIsNotNone(res.get('json').get('properties').get('P30').get('value') , '/entity/ endpoint is failing with a correct input, property P30 value not found.')
+        self.assertIsNotNone(res.get('json').get('properties').get('P30').get('values') , '/entity/ endpoint is failing with a correct input, property P30 value not found.')
 
     def test_entity_endpoint_invalid_entity(self):
         # testing with an unexisting entity
-        endpoint = '/entity/'
         entity_UID = '50'
-        res = query_api('get', graph_query_url + endpoint + entity_UID, {}, {}, {})
+        res = query_api('get', graph_query_url + self.entity_endpoint + entity_UID, {}, {}, {})
         self.assertEqual(res.get('code'), 400 , '/entity/ endpoint is working with an unexisting entity UID.')
 
 
     # /entity/classes/{entity_UID} unit tests
     def test_entity_classes_endpoint_correct_input(self):
-        endpoint = '/entity/classes/'
         entity_UID = 'Q750'
         # testing a correct case:
-        res = query_api('get', graph_query_url + endpoint + entity_UID, {}, {}, {})
+        res = query_api('get', graph_query_url + self.entity_classes_endpoint + entity_UID, {}, {}, {})
 
         self.assertEqual(res.get('code'), 200 , '/entity/clases/ endpoint is failing with a correct input.')
     
     def test_entity_classes_endpoint_invalid_entity(self):
         # testing with an unexisting entity
-        endpoint = '/entity/classes/'
         entity_UID = '50'
-        res = query_api('get', graph_query_url + endpoint + entity_UID, {}, {}, {})
+        res = query_api('get', graph_query_url + self.entity_classes_endpoint + entity_UID, {}, {}, {})
         self.assertEqual(res.get('code'), 400 , '/entity/clases/ endpoint is working with an unexisting entity UID.')
 
     # get class template endpoint
     def test_class_template_endpoint_correct_case(self):
-        endpoint = '/class/template/'
         class_UID = 'Q6256'
-        res = query_api('get', graph_query_url + endpoint + class_UID, {}, {}, {})
+        res = query_api('get', graph_query_url + self.class_template_endpoint + class_UID, {}, {}, {})
         self.assertEqual(res.get('code'), 200 , '/class/template/ endpoint is not working with correct data.')
 
         # check result contains frequency
@@ -90,27 +88,24 @@ class Graph_Query_testing(unittest.TestCase):
         self.assertIsNone(res.get('json').get('properties').get('P1566'), 'Banned data  type "ExternalID" property found in the template on /class/template/ endpoint.')
 
     def test_class_template_union_class_case(self):
-        endpoint = '/class/template/'
         class_UID = 'Q187449'
-        res = query_api('get', graph_query_url + endpoint + class_UID, {}, {}, {})
+        res = query_api('get', graph_query_url + self.class_template_endpoint + class_UID, {}, {}, {})
         self.assertEqual(res.get('code'), 200 , '/class/template/ endpoint is not working with correct union class.')
 
         # check the heritage class properties are returned
         self.assertIsNotNone(res.get('json').get('properties').get('P1435'), 'Expected properties in union class are missing in /class/template/ endpoint.')
 
     def test_class_template_parent_class_case(self):
-        endpoint = '/class/template/'
         class_UID = 'Q1549591'
-        res = query_api('get', graph_query_url + endpoint + class_UID, {}, {}, {})
+        res = query_api('get', graph_query_url + self.class_template_endpoint + class_UID, {}, {}, {})
         self.assertEqual(res.get('code'), 200 , '/class/template/ endpoint is not working with correct class that inherited its properties.')
 
         # check result contains properties
         self.assertNotEqual(len(res.get('json').get('properties')), 0, 'Properties are not inherited in /class/template/ endpoint.')
         
     def test_class_template_parent_class_extra_properties_case(self):
-        endpoint = '/class/template/'
         class_UID = 'Q5119'
-        res = query_api('get', graph_query_url + endpoint + class_UID, {}, {}, {})
+        res = query_api('get', graph_query_url + self.class_template_endpoint + class_UID, {}, {}, {})
         self.assertEqual(res.get('code'), 200 , '/class/template/ endpoint is not working with correct class that inherited its properties and have its own properties.')
 
         # check if result contains clas exclusive property
@@ -118,8 +113,7 @@ class Graph_Query_testing(unittest.TestCase):
  
     # fill template endpoint
     def test_fill_templates_correct_case(self):
-        endpoint = '/templates/fill/'
-        res = query_api('post', graph_query_url + endpoint, {}, {}, {
+        res = query_api('post', graph_query_url + self.fill_template_endpoint, {}, {}, {
             "templates": [
                 {
                 "UID": "Q515",
@@ -144,8 +138,7 @@ class Graph_Query_testing(unittest.TestCase):
         self.assertEqual(res.get('code'), 200 , '/templates/fill/ endpoint is not working with a correct input.')
 
     def test_fill_templates_incorrect_input(self):
-        endpoint = '/templates/fill/'
-        res = query_api('post', graph_query_url + endpoint, {}, {}, {
+        res = query_api('post', graph_query_url + self.fill_template_endpoint, {}, {}, {
             "templates": [
                 {
                 "UID": "Q515",
@@ -288,11 +281,6 @@ class Graph_Query_testing(unittest.TestCase):
 
         res = sparql_query_kg(table_sparql, all_params)
         self.assertEqual(res.get('code'), 200, ' table_sparql notworking.')
-
-
-
-        
-
 
 
 if __name__ == '__main__':
