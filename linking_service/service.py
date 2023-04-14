@@ -24,9 +24,14 @@ open_tapioca_api = dict(config.items('OPEN-TAPIOCA-API'))
 
 kg_prefix = config['KG_DATA']['prefix']
 
+# Reding the app configurations to get the service configuration
+app_config_file_path = 'App_config.ini'
+app_config = read_config_file(app_config_file_path)
+linking_service = dict(app_config.items('LINKING_SERVICE'))
+
 app = FastAPI()
 
-@app.post('/link/')
+@app.post(linking_service.get('link_endpoint'))
 def link_data(question : Question_DTO):
     try:
         response = {}

@@ -18,11 +18,11 @@ linking_url = 'http://' + linking_service.get('ip') + ':' + linking_service.get(
 
 class Linking_testing(unittest.TestCase):
 
+    link_endpoint = linking_service.get('link_endpoint')
     # /link/ unit tests
     def test_link_endpoint_correct_input(self):
-        endpoint = '/link/'
         # testing a correct case:
-        res = query_api('post', linking_url + endpoint, {}, {}, {
+        res = query_api('post', linking_url + self.link_endpoint, {}, {}, {
             'text': 'Who is the president of Bolivia?'
         })
 
@@ -43,9 +43,8 @@ class Linking_testing(unittest.TestCase):
         self.assertIsNotNone(res.get('json').get('relations')[0].get('label') , '/link/ endpoint is failing with a correct input, resulting relation does not have label.')
         
     def test_link_endpoint_incorrect_input(self):
-        endpoint = '/link/'
         # incorrect case
-        res = query_api('post', linking_url + endpoint, {}, {}, {})
+        res = query_api('post', linking_url + self.link_endpoint, {}, {}, {})
         
         self.assertEqual(res.get('code'), 422 , '/link/ endpoint allows incorrect input.')
 
