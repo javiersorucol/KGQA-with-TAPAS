@@ -12,6 +12,8 @@ def query_api(method:str, url:str, headers:dict, params:dict, json_payload:dict,
                 res = requests.get(url, params=params, headers=headers, json=json_payload)
             elif method =='post':
                 res = requests.post(url, params=params, headers=headers, json=json_payload)
+            elif method == 'put':
+                res = requests.put(url, params=params, headers=headers, json=json_payload)
             else:
                 raise Exception('Unexpected method.')
             if res.status_code == 200:
@@ -46,10 +48,8 @@ def translate(query:str, lang:str):
         url = get_service_url(translation_service, 'translate_endpoint')
 
         res = query_api('post', url, {}, {}, payload)
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Translation service returned an error. Code: ' + str(res.get('code')) + ' . Error: ' + res.get('text'))
-
-        return res.get('json')
+        
+        return res
 
     except HTTPException as e:
         raise e
@@ -68,10 +68,7 @@ def link_graph_elements(query:str):
         url = get_service_url(linking_service, 'link_endpoint')
         res = query_api('post', url, {}, {}, payload)
     
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Linking service returned an error. Code: ' + str(res.get('code')) + ' . Error: ' + res.get('text'))
-
-        return res.get('json')
+        return res
 
     except HTTPException as e:
         raise e
@@ -87,10 +84,7 @@ def get_entity_classes(entity_UID:str):
         url = get_service_url(graph_query_service, 'entity_classes_endpoint') + entity_UID
         res = query_api('get', url, {}, {}, {})
 
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Graph Query service returned an error while retrieving information of entity ' + entity_UID + ' . Code: ' + str(res.get('code')) + ' . Error: ' + res.get('text'))
-
-        return res.get('json')
+        return res
 
     except HTTPException as e:
         raise e
@@ -105,10 +99,7 @@ def generate_class_template(class_UID:str):
         url = get_service_url(graph_query_service, 'class_template_endpoint') + class_UID
         res = query_api('get', url, {}, {}, {})
 
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Graph Query service returned an error while generating class template for: ' + class_UID + '. Code: ' + str(res.get('code')) + ' . Error: ' + res.get('text'))
-
-        return res.get('json')
+        return res
 
     except HTTPException as e:
         raise e
