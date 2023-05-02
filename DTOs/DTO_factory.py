@@ -3,47 +3,17 @@ from fastapi import HTTPException
 
 def wikidata_to_Table(wikidata_response):
     try:
-        table = []
+        table = {}
         results = wikidata_response.get('results').get('bindings')
-        while len(results) > 0:
-            same_items = list(filter((lambda x: x.get('item').get('value') == results[0].get('item').get('value') ) ,results))
-            results = list(filter((lambda x: x.get('item').get('value') != results[0].get('item').get('value') ) ,results))
+        # for earch returned element
+        for result in results:
+            #for each varible of the element
+            for key,value in result.items():
+                # if key not in the table we will add it
+                if key not in table.keys():
+                    table[key] = []
+                table[key].append(value.get('value'))
             
-            new_item = same_items.pop(0)
-            for item in same_items:
-                for key,value in item.items():
-                    if key != 'item' and key != 'itemLabel':
-                        if type(new_item.get(key).get('value')) is not list:
-                            new_item[key]['value'] = [ new_item.get(key).get('value') ]
-                            
-                        if value.get('value') not in new_item.get(key).get('value'):
-                            new_item[key]['value'].append(value.get('value'))
-            
-            table.append(new_item)
-    
-    #table = {}
-    # for prop in template.props:
-    #     table[prop.UID] = {
-    #         'type' : prop.type,
-    #         'label' : prop.label,
-    #         'values' : []
-    #     }
-
-    # table['item'] = {
-    #     'type' : 'wikidatabase-item',
-    #     'label' : 'item URI',
-    #     'values' : []
-    # }
-    # table['itemLabel'] = {
-    #     'type' : 'string',
-    #     'label' : 'item label',
-    #     'values' : []
-    # }
-
-    # for result in wikidata_response.get('results').get('bindings'):
-    #     for key,value in result.items():
-    #         table[key]['values'].append(value.get('value'))
-
         return table
     
     except Exception as e:

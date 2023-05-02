@@ -225,32 +225,25 @@ def fill_template(class_template: Table_template_DTO, entities_data: dict, entit
 
         # Let's change the response to match the DTO format we require
 
+        print(res.get('json'))
         table = wikidata_to_Table(res.get('json'))
 
         # Now we'll make sure the entities of the question related to this class are added to the table data
         related_entities = list(filter((lambda x: class_match(x, class_template.UID)), entities_list))
     
         for entity in related_entities:
-            table_entity = list(filter((lambda x: x.get('item').get('value') == (entity_prefix + entity.get('UID')) ), table))
-            if len(table_entity) == 0:
-                table_entity = {
-                    'item': {
-                        'type': 'uri',
-                        'value': (entity_prefix + entity.get('UID'))
-                    },
-                    'itemLabel': {
-                        'xml:lang': 'en',
-                        'type': 'literal',
-                        'value': entity.get('label')
-                    }
-                }
-
-                for property in class_template.properties:
-                    if property.UID in entity.get('properties').keys():
-                        table_entity[property.UID] = entity.get('properties').get(property.UID)
-                        table_entity[property.UID]['type'] = table_entity[property.UID].pop('data_type')
-            
-                table.append(table_entity)
+            # check if the related entity is on table item list
+            if (entity_prefix + entity.get('UID')) not in table.get('item'):
+                for key in table.keys():
+                    # add the entity UID
+                    if key == 'item':
+                       table.get(key).append((entity_prefix + entity.get('UID')))
+                    # add the entity label
+                    elif key == 'itemLabel':
+                        table.get(key).append(entity.get('label'))
+                    # any other property
+                    elif entity.get('properties').get(key) is not None:
+                        table[key].append(entity.get('properties').get(key).get('values'))
 
         return table
 
