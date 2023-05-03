@@ -225,7 +225,6 @@ def fill_template(class_template: Table_template_DTO, entities_data: dict, entit
 
         # Let's change the response to match the DTO format we require
 
-        print(res.get('json'))
         table = wikidata_to_Table(res.get('json'))
 
         # Now we'll make sure the entities of the question related to this class are added to the table data
@@ -421,7 +420,6 @@ def sparql_query_kg(sparql: str, sparql_params:dict):
         kg_query_params = {'query' : sparql_query, 
                         'format' : 'json'}
         res = query_api('get', query_endpoint, { 'User-Agent' : 'SubgraphBot/0.1, bot for obtention of class subgraphs (javiersorucol1@upb.edu)' }, kg_query_params, {})
-
         return res
     
     except Exception as e:
