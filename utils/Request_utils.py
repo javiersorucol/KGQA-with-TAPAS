@@ -47,6 +47,7 @@ app_config = read_config_file(app_config_file_path)
 translation_service = dict(app_config.items('TRANSLATION_SERVICE'))
 linking_service = dict(app_config.items('LINKING_SERVICE'))
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
+templates_service = dict(app_config.items('TEMPLATES_SERVICE'))
 
 def fill_templates(templates:dict):
     try:
@@ -130,6 +131,19 @@ def generate_class_template(class_UID:str):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while generating class template for class ' + class_UID + ': ' + str(e))
+
+def get_question_tables(linked_data:dict):
+    try:
+        url = get_service_url(templates_service, 'question_templates_endpoint')
+        res = query_api('post', url, {}, {}, linked_data)
+
+        return res
+    
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while generating class tables : ' + str(e))
 
 def get_service_url(service:dict, enpoint:str):
     try:    

@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
 
-from utils.Request_utils import translate, link_graph_elements, get_entity_classes, generate_class_template
+from utils.Request_utils import translate, link_graph_elements, get_question_tables
 
 from DTOs.main_DTOs import QUERY_DTO
 
@@ -42,9 +42,13 @@ def example(question: QUERY_DTO):
       
       linked_elements = res.get('json')
 
-      
+      # Get the related tables
+      res = get_question_tables(linked_elements)
+      if res.get('code') != 200:
+         raise HTTPException(status_code=502, detail='Error retieving the class tables from the template service.' + res.get('text')) 
 
-      return linked_elements
+
+      return res.get('json')
    except HTTPException as e:
       raise e
    except Exception as e:
