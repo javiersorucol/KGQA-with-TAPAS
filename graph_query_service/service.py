@@ -154,7 +154,6 @@ def fill_templates(templates: Table_templates_DTO):
                 if val.get('data_type') == 'wikibase-item':
                     entities_data[key] = list(set(([] if entities_data.get(key) is None else entities_data.get(key)) + val.get('values')))
     
-
         for template in templates.templates:
             tables[template.UID] = fill_template(template, entities_data, entities_list)
         return tables
@@ -222,7 +221,7 @@ def fill_template(class_template: Table_template_DTO, entities_data: dict, entit
 
         if res.get('code') != 200:
             raise HTTPException(status_code=502, detail='Wikidata Query API error. Code ' + str(res.get('code')) + " : " + res.get('text'))
-
+    
         # Let's change the response to match the DTO format we require
 
         table = wikidata_to_Table(res.get('json'))
@@ -417,9 +416,9 @@ def sparql_query_kg(sparql: str, sparql_params:dict):
     try:
         sparql_template = Template(sparql)
         sparql_query = sparql_template.substitute(sparql_params)
-        kg_query_params = {'query' : sparql_query, 
-                        'format' : 'json'}
-        res = query_api('get', query_endpoint, { 'User-Agent' : 'SubgraphBot/0.1, bot for obtention of class subgraphs (javiersorucol1@upb.edu)' }, kg_query_params, {})
+        kg_query_params = {'format' : 'json'}
+        xml = "query=" + sparql_query
+        res = query_api('post', query_endpoint, {'content-type':'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent' : 'SubgraphBot/0.1, bot for obtention of class subgraphs (javiersorucol1@upb.edu)' }, kg_query_params, xml, paylod_type='data')
         return res
     
     except Exception as e:

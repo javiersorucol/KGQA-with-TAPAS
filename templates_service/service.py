@@ -6,10 +6,11 @@ from fastapi import FastAPI, HTTPException, Query
 
 from utils.Configuration_utils import read_config_file
 from utils.Json_utils import read_json, save_json
-from utils.Request_utils import translate, link_graph_elements, get_entity_classes, generate_class_template
+from utils.Request_utils import translate, link_graph_elements, get_entity_classes, generate_class_template, fill_templates
 
 from DTOs.templates_DTOs import QALD_json_DTO
 from DTOs.linking_DTOs import Linked_data_DTO
+from DTOs.graph_query_DTOs import Table_templates_DTO, Table_template_DTO, Table_template_property_DTO
 
 # Reading the config file
 config_file_path = 'templates_service/Config/Config.ini'
@@ -171,7 +172,7 @@ def get_question_tables(linked_data : Linked_data_DTO):
         # Case we didn't find any template for the question
         if len(question_templates) == 0:
             # try to get templates by using relations
-            for property in linked_data.relations_list:
+            for property in linked_data.relations:
                 alternative_classes = properties_search_index.get(property.get('UID'))
                 if alternative_classes is not None:
                     for alt_class in alternative_classes:
@@ -185,7 +186,8 @@ def get_question_tables(linked_data : Linked_data_DTO):
         save_json(templates_data_path, templates)
 
         print('templates returned: ', str(question_templates.keys()))
-        return question_templates
+
+        return get_tables_by_template(question_templates, linked_data.entities)
 
     except HTTPException as e:
         raise e
@@ -224,6 +226,31 @@ def update_with_remote_QALD_json(dataset : QALD_json_DTO, lang : str = Query(
 
 # extra functions
 
+def get_tables_by_template(templates, entities):
+    try:
+        # transform to the expected DTO
+        graph_templates = { 'templates': [], 'entities_UIDs' : [x.get('UID') for x in entities]}
+
+        for template_UID, template in templates.items():
+            graph_template = { 'UID' : template_UID, 'properties':[]}
+            for property_UID, property in template.get('properties').items():
+                graph_template['properties'].append({'UID' : property_UID, 'label' : property.get('label'), 'type' : property.get('type')})
+
+            graph_templates['templates'].append(graph_template)
+        
+        # fill the templates
+        res = fill_templates(graph_templates)
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Error filling the templates: ' + res.get('text'))
+        
+        return res.get('json')
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Error while filling the templates: ' + str(e))
+
 def top_templates(question_templates: dict):
     freq_rank= sorted(question_templates.items(), key=(lambda x: x[1].get('frequency')), reverse=True)[0:max_templates_per_question]
     return dict(freq_rank)
@@ -233,9 +260,8 @@ def get_linked_elements_classes(linked_data: dict):
 
     classes = []
         
-    for entity in  linked_data.get('entity_list'):
+    for entity in  linked_data.get('entities'):
         res = get_entity_classes(entity.get('UID'))
-        print(res)
         if res.get('code') != 200:
             continue
         classes = classes + res.get('json')

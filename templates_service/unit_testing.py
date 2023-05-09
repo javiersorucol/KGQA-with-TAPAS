@@ -23,10 +23,10 @@ class Templatess_testing(unittest.TestCase):
     # question_templates_endpoint
     def test_question_endpoint_correct_case(self):
         res = query_api('post', templates_url + self.question_templates_endpoint, {}, {}, {
-        'entity_list': [
+        'entities': [
             {'UID':'Q750'}
         ],
-        'relations_list': [
+        'relations': [
             ]
         })
 
@@ -35,34 +35,29 @@ class Templatess_testing(unittest.TestCase):
         # check country class is returned
         self.assertIsNotNone(res.get('json').get('Q6256'), self.question_templates_endpoint + ' endpoint is failing with a correct input, country template not found.')
 
-        # check the response keys
-        self.assertIsNotNone(res.get('json').get('Q6256').get('frequency') , self.question_templates_endpoint + ' endpoint is failing with a correct input, frequency key not found.')
-        self.assertIsNotNone(res.get('json').get('Q6256').get('properties') , self.question_templates_endpoint + ' endpoint is failing with a correct input, properties key not found.')
-
-        # check property keys
-        self.assertIsNotNone(res.get('json').get('Q6256').get('properties').get('P6').get('label') , self.question_templates_endpoint + ' endpoint is failing with a correct input, property does not contain a label.')
-        self.assertIsNotNone(res.get('json').get('Q6256').get('properties').get('P6').get('type') , self.question_templates_endpoint + ' endpoint is failing with a correct input, property does not contain a type.')
+        # check properties
+        self.assertIsNotNone(res.get('json').get('Q6256').get('P6') , self.question_templates_endpoint + ' endpoint is failing with a correct input, property P6 not found')
 
     def test_question_endpoint_multiple_entities_case(self):
         res = query_api('post', templates_url + self.question_templates_endpoint, {}, {}, {
-        'entity_list': [
+        'entities': [
             {'UID':'Q750'}, {'UID':'Q42410'}, {'UID':'Q414'}
         ],
-        'relations_list': [
+        'relations': [
             ]
         })
         
         self.assertEqual(res.get('code'), 200 , self.question_templates_endpoint + ' endpoint is failing with a multiple entities input.')
-        # check if the most important templates are returned
+        # check if the most important table templates are returned
         self.assertIsNotNone(res.get('json').get('Q6256'), self.question_templates_endpoint + ' endpoint is failing with a correct multiple entity input, country template not found.')
         self.assertIsNotNone(res.get('json').get('Q5'), self.question_templates_endpoint + ' endpoint is failing with a correct multiple entity input, human template not found.')
 
     def test_question_endpoint_no_entities_case(self):
         res = query_api('post', templates_url + self.question_templates_endpoint, {}, {}, {
-        'entity_list': [
+        'entities': [
         ],
 
-        'relations_list': [{'UID':'P19'}
+        'relations': [{'UID':'P19'}
             ]
         })
         self.assertEqual(res.get('code'), 200 , self.question_templates_endpoint + ' endpoint is failing to obtain templates by searching alternative classes using given properties.')
@@ -70,10 +65,10 @@ class Templatess_testing(unittest.TestCase):
 
     def test_question_endpoint_top_templates(self):
         res = query_api('post', templates_url + self.question_templates_endpoint, {}, {}, {
-        'entity_list': [
+        'entities': [
             {'UID':'Q750'}, {'UID':'Q42410'}, {'UID':'Q60'}, {'UID':'Q79784'}, {'UID':'Q49740'}
         ],
-        'relations_list': [
+        'relations': [
             ]
         })
         self.assertEqual(res.get('code'), 200 , self.question_templates_endpoint + ' endpoint is failing to obtain templates for cases that result in more than 10 templates.')

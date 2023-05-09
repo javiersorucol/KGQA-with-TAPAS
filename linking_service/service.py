@@ -60,7 +60,7 @@ def link_data(question : Question_DTO):
     
 def get_open_tapioca_response(question:dict):
     try:
-        res = query_api('post', open_tapioca_api.get('endpoint'), json_payload={}, headers=open_tapioca_api_headers, params={
+        res = query_api('post', open_tapioca_api.get('endpoint'), payload={}, headers=open_tapioca_api_headers, params={
             'query' : question.get('text'),
             'lc' : 'en'
         })
@@ -91,7 +91,7 @@ def get_open_tapioca_response(question:dict):
 def get_falcon_response(question: dict):
     try:
         # Making a query to falcon API
-        res = query_api('post', falcon_api.get('endpoint'), json_payload=question, headers=falcon_api_headers, params=falcon_api_params)
+        res = query_api('post', falcon_api.get('endpoint'), payload=question, headers=falcon_api_headers, params=falcon_api_params)
 
         # Case of receiving an error response
         if res.get('code') != 200:
