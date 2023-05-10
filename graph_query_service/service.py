@@ -224,7 +224,7 @@ def fill_template(class_template: Table_template_DTO, entities_data: dict, entit
     
         # Let's change the response to match the DTO format we require
 
-        table = wikidata_to_Table(res.get('json'))
+        table = wikidata_to_Table(res.get('json'), class_template)
 
         # Now we'll make sure the entities of the question related to this class are added to the table data
         related_entities = list(filter((lambda x: class_match(x, class_template.UID)), entities_list))
@@ -242,6 +242,10 @@ def fill_template(class_template: Table_template_DTO, entities_data: dict, entit
                     # any other property
                     elif entity.get('properties').get(key) is not None:
                         table[key].append(entity.get('properties').get(key).get('values'))
+                    # if the property is not in the entity add None
+                    else:
+                        table[key].append(str(None))
+
 
         return table
 
@@ -249,7 +253,7 @@ def fill_template(class_template: Table_template_DTO, entities_data: dict, entit
         raise e
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail='Unknown Error presented while filling template: ' + class_template.UID + '. Error: ' + str(e))
+        raise HTTPException(status_code=500, detail='Unknown Error presented while filling template: ' + str(class_template.UID) + '. Error: ' + str(e))
 
 def get_class_properties(class_UID : str):
     try:

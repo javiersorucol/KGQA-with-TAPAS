@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
 
-from utils.Request_utils import translate, link_graph_elements, get_question_tables
+from utils.Request_utils import translate, link_graph_elements, get_question_tables, ask_tapas
 
 from DTOs.main_DTOs import QUERY_DTO
 
@@ -47,8 +47,17 @@ def example(question: QUERY_DTO):
       if res.get('code') != 200:
          raise HTTPException(status_code=502, detail='Error retieving the class tables from the template service.' + res.get('text')) 
 
+      tables = res.get('json')
 
-      return res.get('json')
+      # Ask TAPAS using each table
+      answers = []
+      for key,table in tables.items():
+         res = ask_tapas(table=table, question=question.text)
+         if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Error connecting with TAPAS service: ' + res.get('text')) 
+         
+         answers.append(res.get('json'))
+      return answers
    except HTTPException as e:
       raise e
    except Exception as e:

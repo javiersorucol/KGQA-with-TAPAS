@@ -48,6 +48,25 @@ translation_service = dict(app_config.items('TRANSLATION_SERVICE'))
 linking_service = dict(app_config.items('LINKING_SERVICE'))
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
 templates_service = dict(app_config.items('TEMPLATES_SERVICE'))
+tapas_service = dict(app_config.items('TAPAS_SERVICE'))
+
+def ask_tapas(table:dict, question:str):
+    try:
+        global tapas_service
+
+        url = get_service_url(tapas_service, 'ask_endpoint')
+        res = query_api('post', url, {}, {}, {
+            'question':question,
+            'table': table
+        })
+        return res
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying TAPAS service for an answer: ' + str(e))
+
 
 def fill_templates(templates:dict):
     try:
@@ -134,6 +153,7 @@ def generate_class_template(class_UID:str):
 
 def get_question_tables(linked_data:dict):
     try:
+        global templates_service
         url = get_service_url(templates_service, 'question_templates_endpoint')
         res = query_api('post', url, {}, {}, linked_data)
 
