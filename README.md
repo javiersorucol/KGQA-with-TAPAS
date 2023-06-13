@@ -32,3 +32,14 @@ uvicorn tapas_service.service:app  --reload --log-config tapas_service/Logs/log_
 ```
 uvicorn graph_query_service.service:app  --reload --log-config graph_query_service/Logs/log_config.ini --port 8093
 ```
+- Templates service
+
+```
+uvicorn templates_service.service:app  --reload --log-config templates_service/Logs/log_config.ini --port 8094
+```
+
+- Main service
+
+```
+uvicorn main_service.service:app  --reload --log-config main_service/Logs/log_config.ini --port 8097
+```

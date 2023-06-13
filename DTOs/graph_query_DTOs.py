@@ -14,3 +14,4 @@ class Table_template_DTO(BaseModel):
 class Table_templates_DTO(BaseModel):
     templates: List[Table_template_DTO]
     entities_UIDs: List[str]
+    

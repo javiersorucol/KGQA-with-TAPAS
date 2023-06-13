@@ -1,49 +1,41 @@
-from DTOs.graph_query_DTOs import Table_template_DTO, Table_template_property_DTO, Table_templates_DTO
+from DTOs.graph_query_DTOs import Table_templates_DTO, Table_template_DTO,Table_template_property_DTO
 from fastapi import HTTPException
 
-def wikidata_to_Table(wikidata_response):
+def wikidata_to_Table(wikidata_response, template:Table_template_DTO):
     try:
-        table = []
+        table = {}
         results = wikidata_response.get('results').get('bindings')
-        while len(results) > 0:
-            same_items = list(filter((lambda x: x.get('item').get('value') == results[0].get('item').get('value') ) ,results))
-            results = list(filter((lambda x: x.get('item').get('value') != results[0].get('item').get('value') ) ,results))
+        # for earch returned element
+        for result in results:
+            keys = list(result.keys())
+            # As properties are optional, some of the class expected properties might lack in each row, therefore we will fill it with None
+            for expected_property in template.properties:
+                if expected_property.UID not in result.keys():
+                    # print('adding none for property: ', expected_property)
+                    result[expected_property.UID] = {'type': str(None), 'value': str(None)}
+                    if expected_property.type == 'WikibaseItem':
+                        result[expected_property.UID +'Label'] = {'type': str(None), 'value': str(None)}
+
+            #for each varible of the element
+            for key,value in result.items():
+                if key == 'item' or key == 'itemLabel':
+                    # if key not in the table we will add it
+                    if key not in table.keys():
+                        table[key] = []
+                    table[key].append(value.get('value'))
+                elif 'Label' not in key:
+                    # if key not in the table we will add it
+                    if key not in table.keys():
+                        table[key] = []
+                    value = value.get('value') if result.get(key + 'Label') is None else result.get(key + 'Label').get('value')
+                    table[key].append(value)
             
-            new_item = same_items.pop(0)
-            for item in same_items:
-                for key,value in item.items():
-                    if key != 'item' and key != 'itemLabel':
-                        if type(new_item.get(key).get('value')) is not list:
-                            new_item[key]['value'] = [ new_item.get(key).get('value') ]
-                            
-                        if value.get('value') not in new_item.get(key).get('value'):
-                            new_item[key]['value'].append(value.get('value'))
-            
-            table.append(new_item)
-    
-    #table = {}
-    # for prop in template.props:
-    #     table[prop.UID] = {
-    #         'type' : prop.type,
-    #         'label' : prop.label,
-    #         'values' : []
-    #     }
-
-    # table['item'] = {
-    #     'type' : 'wikidatabase-item',
-    #     'label' : 'item URI',
-    #     'values' : []
-    # }
-    # table['itemLabel'] = {
-    #     'type' : 'string',
-    #     'label' : 'item label',
-    #     'values' : []
-    # }
-
-    # for result in wikidata_response.get('results').get('bindings'):
-    #     for key,value in result.items():
-    #         table[key]['values'].append(value.get('value'))
-
+        
+        if len(table.keys()) == 0:
+            for header in wikidata_response.get('head').get('vars'):
+                if 'Label' not in header:
+                    table[header] = []
+            table['itemLabel'] = []
         return table
     
     except Exception as e:

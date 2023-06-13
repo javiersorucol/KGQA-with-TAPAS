@@ -15,6 +15,12 @@ config = read_config_file(config_file_path)
 # saving config vars
 translations_modes = dict(config.items('TRANSLATION-MODES'))
 
+# Reding the servie configurations
+app_config_file_path = 'App_config.ini'
+app_config = read_config_file(app_config_file_path)
+
+translation_service = dict(app_config.items('TRANSLATION_SERVICE'))
+
 translators = {}
 for key, value in translations_modes.items():
     translators[key] = pipeline('translation', model=value)
@@ -24,7 +30,7 @@ app = FastAPI()
 
 # End Points
 
-@app.post('/translate/')
+@app.post(translation_service.get('translate_endpoint'))
 def translate(question :  Question_DTO):
     try:
         #If translation mode does not exist, return error

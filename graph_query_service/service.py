@@ -38,6 +38,8 @@ parents_sparql = config['SPARQL']['parents']
 properties_sparql = config['SPARQL']['properties']
 table_sparql = config['SPARQL']['table']
 table_property_template = config['SPARQL']['table_property_template']
+table_property_template_with_label = config['SPARQL']['table_property_template_with_label']
+complete_query = config['SPARQL']['complete_query']
 
 # Graph ontology UID
 ontology_prefix = config['KNOWLEDGE_GRAPH']['ontology_prefix']
@@ -51,11 +53,16 @@ banned_data_types = config.get('KNOWLEDGE_GRAPH', 'banned_data_types').split()
 number_of_attempts = int(config['SERVER_PARAMS']['number_of_attempts'])
 table_max_lenght = config['SERVER_PARAMS']['table_max_lenght']
 
+# Reding the service configurations
+app_config_file_path = 'App_config.ini'
+app_config = read_config_file(app_config_file_path)
+graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
+
 app = FastAPI()
 
 ### endpoints
 # Get entity info
-@app.get('/entity/{entity_UID}')
+@app.get(graph_query_service.get('entity_endpoint') + '{entity_UID}')
 def get_entity_data(entity_UID : str):
     try:
         res = query_api('get',(entity_prefix  + entity_UID), entity_query_headers, entity_query_params, entity_query_payload, number_of_attempts)
@@ -93,7 +100,7 @@ def get_entity_data(entity_UID : str):
         raise HTTPException(status_code=500, detail='Unknown error while retrieving the information for entity: ' + entity_UID + '. ' + str(e))
 
 # Get Entity Classes
-@app.get('/entity/classes/{entity_UID}')
+@app.get(graph_query_service.get('entity_classes_endpoint') + '{entity_UID}')
 def get_entity_classes(entity_UID : str):
     try:
 
@@ -115,7 +122,7 @@ def get_entity_classes(entity_UID : str):
         raise HTTPException(status_code=500, detail='Unknown error while retrieving classes for entity: ' + entity_UID + '. ' + str(e))
 
 # Get a class template data
-@app.get('/class/template/{class_UID}')
+@app.get(graph_query_service.get('class_template_endpoint') + '{class_UID}')
 def get_class_template( class_UID: str):
     try:
         template = { 'frequency': 1,
@@ -131,11 +138,11 @@ def get_class_template( class_UID: str):
         raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' template. Error: ' + str(e))
 
 # Fill a table template endpoint
-@app.post('/templates/fill/')
+@app.post(graph_query_service.get('fill_template_endpoint'))
 def fill_templates(templates: Table_templates_DTO):
     try:
         tables = {}
-        entities_data = {}
+        filter_values = {}
         entities_list = []
 
         # using entities to filter tables information
@@ -147,11 +154,11 @@ def fill_templates(templates: Table_templates_DTO):
             for key,val in entity_info.get('properties').items():
             # Save property values to filter, only in properties that work with other wikidata items
                 if val.get('data_type') == 'wikibase-item':
-                    entities_data[key] = list(set(([] if entities_data.get(key) is None else entities_data.get(key)) + val.get('values')))
+                    filter_values[key] = list(set(([] if filter_values.get(key) is None else filter_values.get(key)) + val.get('values')))
     
-
         for template in templates.templates:
-            tables[template.UID] = fill_template(template, entities_data, entities_list)
+            tables[template.UID] = fill_template(template, filter_values, entities_list)
+            
         return tables
         
     except HTTPException as e:
@@ -162,29 +169,32 @@ def fill_templates(templates: Table_templates_DTO):
 
 
 ### Functions
-def fill_template(class_template: Table_template_DTO, entities_data: dict, entities_list: list):
-    def get_filter_conditions(template:Table_template_DTO, entities_data:dict):
+def fill_template(class_template: Table_template_DTO, filter_values: dict, entities_list: list):
+    
+    def get_filter_conditions(template:Table_template_DTO, filter_values:dict):
         # filtering to use only properties related to wikibaseitens
         template_filter_properties = list(filter((lambda x: x.type == 'WikibaseItem'), template.properties))
         template_properties_UIDs = [property.UID for property in template_filter_properties ]
-        filter_properties = dict(filter( lambda x: x[0] in template_properties_UIDs,entities_data.items()))
+        filter_properties = dict(filter( lambda x: x[0] in template_properties_UIDs,filter_values.items()))
         # If there are no filter properties (shouldn't be the case), we will return 1=1 to keep all results
         if len(filter_properties) == 0:
             return '1=1'
         
         filter_conditions = []
         for key, values in filter_properties.items():
-            for val in values:
-                filter_conditions.append('?' + key + ' = wd:' + val)
+            if values is not None:
+                for val in values:
+                    if val is not None:
+                        filter_conditions.append('?' + key + ' = wd:' + val)
 
         return ' || '.join(filter_conditions)
 
     def get_properties_declaration(properties: List[Table_template_property_DTO]):
-        prop_UIDs = ['?' + property.UID for property in properties]
+        prop_UIDs = [('?' + property.UID) + ('' if property.type != 'WikibaseItem' else (' ?' + property.UID + 'Label'))  for property in properties]
         return ' '.join(prop_UIDs)
 
     def get_properties_list(properties: List[Table_template_property_DTO]):
-        properties_list = [Template(table_property_template).substitute({'property_UID' : property.UID }) for property in properties]
+        properties_list = [Template(table_property_template if property.type != 'WikibaseItem' else table_property_template_with_label).substitute({'property_UID' : property.UID }) for property in properties]
         return ' '.join(properties_list)
     
     def class_match(entity : dict, class_UID: str):
@@ -200,13 +210,20 @@ def fill_template(class_template: Table_template_DTO, entities_data: dict, entit
         except Exception as e:
         # If by some reason we can't find the entity classes, we will return false
             return False
+    
+    def get_specific_entities_filter(entities_list:dict):
+        filter = []
+        for entity in entities_list:
+            filter.append('?item=wd:' + entity.get('UID'))
+        return '||'.join(filter)
+    
     try:
         # We'll generate the strings to fill the sparql template to query the information for this wikidata class
         properties_declaration = get_properties_declaration(class_template.properties)
         properties_list = get_properties_list(class_template.properties)
-        filter_conditions = get_filter_conditions(class_template, entities_data)
+        filter_conditions = get_filter_conditions(class_template, filter_values)
 
-        res = sparql_query_kg(table_sparql, {
+        general_query = Template(table_sparql).substitute({
             'properties_declaration' : properties_declaration,
             'class_property_UID' : class_property_UID,
             'class_UID' : class_template.UID,
@@ -214,38 +231,36 @@ def fill_template(class_template: Table_template_DTO, entities_data: dict, entit
             'limit' : table_max_lenght,
             'filter_conditions' : filter_conditions
         })
+        specific_entities_query = Template(table_sparql).substitute({
+            'properties_declaration' : properties_declaration,
+            'class_property_UID' : class_property_UID,
+            'class_UID' : class_template.UID,
+            'properties_list' : properties_list,
+            'limit' : table_max_lenght,
+            'filter_conditions' : get_specific_entities_filter(entities_list)
+        })
+        
+        res = sparql_query_kg(complete_query, {
+            'specific_entities_query' : specific_entities_query,
+            'general_query' : general_query,
+            'limit' : table_max_lenght,
+        })
+
 
         if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Wikidata Query API error. Code ' + str(res.get('code')) + " : " + res.get('text'))
-
-        # Let's change the response to match the DTO format we require
-
-        table = wikidata_to_Table(res.get('json'))
-
-        # Now we'll make sure the entities of the question related to this class are added to the table data
-        related_entities = list(filter((lambda x: class_match(x, class_template.UID)), entities_list))
+            raise HTTPException(status_code=502, detail='Wikidata Query API error. Code ' + str(res.get('code')) + " : " + str(res.get('text')))
     
-        for entity in related_entities:
-            table_entity = list(filter((lambda x: x.get('item').get('value') == (entity_prefix + entity.get('UID')) ), table))
-            if len(table_entity) == 0:
-                table_entity = {
-                    'item': {
-                        'type': 'uri',
-                        'value': (entity_prefix + entity.get('UID'))
-                    },
-                    'itemLabel': {
-                        'xml:lang': 'en',
-                        'type': 'literal',
-                        'value': entity.get('label')
-                    }
-                }
+        # Let's change the response to match the DTO format we require
+        table = wikidata_to_Table(res.get('json'), class_template)
 
-                for property in class_template.properties:
-                    if property.UID in entity.get('properties').keys():
-                        table_entity[property.UID] = entity.get('properties').get(property.UID)
-                        table_entity[property.UID]['type'] = table_entity[property.UID].pop('data_type')
-            
-                table.append(table_entity)
+        # change keys to be labels so tapas can work properly
+        table['UID'] = table.pop('item')
+        table['label'] = table.pop('itemLabel')
+        keys = list(table.keys())
+
+        for key in keys:
+            if key != 'UID' and key != 'label':
+                table[next((property.label for property in class_template.properties if property.UID == key), 'None')] = table.pop(key)
 
         return table
 
@@ -253,7 +268,8 @@ def fill_template(class_template: Table_template_DTO, entities_data: dict, entit
         raise e
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail='Unknown Error presented while filling template: ' + class_template.UID + '. Error: ' + str(e))
+        print('Error: ', str(e))
+        raise HTTPException(status_code=500, detail='Unknown Error presented while filling template: ' + str(class_template.UID) + '. Error: ' + str(e))
 
 def get_class_properties(class_UID : str):
     try:
@@ -420,9 +436,13 @@ def sparql_query_kg(sparql: str, sparql_params:dict):
     try:
         sparql_template = Template(sparql)
         sparql_query = sparql_template.substitute(sparql_params)
-        kg_query_params = {'query' : sparql_query, 
-                        'format' : 'json'}
-        res = query_api('get', query_endpoint, { 'User-Agent' : 'SubgraphBot/0.1, bot for obtention of class subgraphs (javiersorucol1@upb.edu)' }, kg_query_params, {})
+
+
+        kg_query_params = {'format' : 'json'}
+
+        xml = "query=" + sparql_query
+        
+        res = query_api('post', query_endpoint, {'content-type':'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent' : 'SubgraphBot/0.1, bot for obtention of class subgraphs (javiersorucol1@upb.edu)' }, kg_query_params, xml, paylod_type='data')
 
         return res
     
