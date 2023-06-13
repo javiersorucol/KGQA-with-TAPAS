@@ -57,7 +57,7 @@
         }
     },
     "Q484652": {
-        "frequency": 197,
+        "frequency": 289,
         "properties": {
             "P17": {
                 "label": "country",
@@ -190,7 +190,7 @@
         }
     },
     "Q45400320": {
-        "frequency": 100,
+        "frequency": 146,
         "properties": {
             "P17": {
                 "label": "country",
@@ -239,7 +239,7 @@
         }
     },
     "Q114853062": {
-        "frequency": 99,
+        "frequency": 145,
         "properties": {
             "P17": {
                 "label": "country",
@@ -333,7 +333,7 @@
         }
     },
     "Q1549591": {
-        "frequency": 44,
+        "frequency": 88,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -426,7 +426,7 @@
         }
     },
     "Q515": {
-        "frequency": 29,
+        "frequency": 53,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -560,7 +560,7 @@
         }
     },
     "Q200250": {
-        "frequency": 25,
+        "frequency": 45,
         "properties": {
             "P17": {
                 "label": "country",
@@ -589,7 +589,7 @@
         }
     },
     "Q208511": {
-        "frequency": 20,
+        "frequency": 43,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -682,7 +682,7 @@
         }
     },
     "Q1093829": {
-        "frequency": 31,
+        "frequency": 74,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -775,7 +775,7 @@
         }
     },
     "Q2264924": {
-        "frequency": 19,
+        "frequency": 42,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -868,7 +868,7 @@
         }
     },
     "Q5": {
-        "frequency": 150,
+        "frequency": 166,
         "properties": {
             "P19": {
                 "label": "place of birth",
@@ -1057,7 +1057,7 @@
         }
     },
     "Q783794": {
-        "frequency": 1,
+        "frequency": 5,
         "properties": {
             "P17": {
                 "label": "country",
@@ -1190,7 +1190,7 @@
         }
     },
     "Q891723": {
-        "frequency": 5,
+        "frequency": 33,
         "properties": {
             "P414": {
                 "label": "stock exchange",
@@ -1199,7 +1199,7 @@
         }
     },
     "Q46970": {
-        "frequency": 2,
+        "frequency": 3,
         "properties": {
             "P17": {
                 "label": "country",
@@ -1261,7 +1261,7 @@
         }
     },
     "Q43229": {
-        "frequency": 2,
+        "frequency": 11,
         "properties": {
             "P17": {
                 "label": "country",
@@ -1458,7 +1458,7 @@
         }
     },
     "Q3624078": {
-        "frequency": 187,
+        "frequency": 226,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -1679,7 +1679,7 @@
         }
     },
     "Q6256": {
-        "frequency": 187,
+        "frequency": 226,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -1923,7 +1923,7 @@
         }
     },
     "Q5119": {
-        "frequency": 11,
+        "frequency": 14,
         "properties": {
             "P36": {
                 "label": "capital",
@@ -2330,7 +2330,7 @@
         }
     },
     "Q7930989": {
-        "frequency": 29,
+        "frequency": 70,
         "properties": {
             "P17": {
                 "label": "country",
@@ -2776,7 +2776,7 @@
         }
     },
     "Q1187811": {
-        "frequency": 5,
+        "frequency": 8,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -2869,7 +2869,7 @@
         }
     },
     "Q42744322": {
-        "frequency": 5,
+        "frequency": 8,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -3185,7 +3185,7 @@
         }
     },
     "Q4830453": {
-        "frequency": 8,
+        "frequency": 35,
         "properties": {
             "P112": {
                 "label": "founded by",
@@ -3354,7 +3354,7 @@
         }
     },
     "Q112099": {
-        "frequency": 6,
+        "frequency": 9,
         "properties": {
             "P17": {
                 "label": "country",
@@ -3673,7 +3673,7 @@
         }
     },
     "Q619610": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -3786,7 +3786,7 @@
         }
     },
     "Q4209223": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -3899,7 +3899,7 @@
         }
     },
     "Q18388277": {
-        "frequency": 3,
+        "frequency": 8,
         "properties": {
             "P17": {
                 "label": "country",
@@ -3956,7 +3956,7 @@
         }
     },
     "Q133442": {
-        "frequency": 4,
+        "frequency": 7,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -4133,7 +4133,7 @@
         }
     },
     "Q707813": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -4331,7 +4331,7 @@
         }
     },
     "Q11828004": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P36": {
                 "label": "capital",
@@ -4444,7 +4444,7 @@
         }
     },
     "Q431289": {
-        "frequency": 1,
+        "frequency": 4,
         "properties": {
             "P127": {
                 "label": "owned by",
@@ -4453,7 +4453,7 @@
         }
     },
     "Q1055701": {
-        "frequency": 1,
+        "frequency": 4,
         "properties": {
             "P17": {
                 "label": "country",
@@ -4586,7 +4586,7 @@
         }
     },
     "Q6881511": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P17": {
                 "label": "country",
@@ -4739,7 +4739,7 @@
         }
     },
     "Q859563": {
-        "frequency": 6,
+        "frequency": 9,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -5250,7 +5250,7 @@
         }
     },
     "Q1569167": {
-        "frequency": 14,
+        "frequency": 16,
         "properties": {
             "P19": {
                 "label": "place of birth",
@@ -5319,7 +5319,7 @@
         }
     },
     "Q1750900": {
-        "frequency": 1,
+        "frequency": 3,
         "properties": {
             "P1441": {
                 "label": "present in work",
@@ -5340,7 +5340,7 @@
         }
     },
     "Q3658341": {
-        "frequency": 2,
+        "frequency": 5,
         "properties": {
             "P1441": {
                 "label": "present in work",
@@ -5361,7 +5361,7 @@
         }
     },
     "Q15711870": {
-        "frequency": 14,
+        "frequency": 16,
         "properties": {
             "P19": {
                 "label": "place of birth",
@@ -5430,7 +5430,7 @@
         }
     },
     "Q15773317": {
-        "frequency": 1,
+        "frequency": 3,
         "properties": {
             "P175": {
                 "label": "performer",
@@ -5459,7 +5459,7 @@
         }
     },
     "Q15773347": {
-        "frequency": 1,
+        "frequency": 3,
         "properties": {
             "P175": {
                 "label": "performer",
@@ -5798,7 +5798,7 @@
         }
     },
     "Q116843339": {
-        "frequency": 5,
+        "frequency": 8,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -6019,7 +6019,7 @@
         }
     },
     "Q4120211": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -6401,7 +6401,7 @@
         }
     },
     "Q66724388": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P17": {
                 "label": "country",
@@ -6594,7 +6594,7 @@
         }
     },
     "Q7275": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P36": {
                 "label": "capital",
@@ -6749,7 +6749,7 @@
         }
     },
     "Q15647906": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -7519,7 +7519,7 @@
         }
     },
     "Q2755753": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P17": {
                 "label": "country",
@@ -7691,7 +7691,7 @@
         }
     },
     "Q262882": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -7801,7 +7801,7 @@
         }
     },
     "Q179164": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P35": {
                 "label": "head of state",
@@ -8347,7 +8347,7 @@
         }
     },
     "Q1250464": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -8693,7 +8693,7 @@
         }
     },
     "Q51576574": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -9555,7 +9555,7 @@
         }
     },
     "Q2285706": {
-        "frequency": 16,
+        "frequency": 19,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -9765,7 +9765,7 @@
         }
     },
     "Q15661340": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -10430,7 +10430,7 @@
         }
     },
     "Q1066538": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -10564,7 +10564,7 @@
         }
     },
     "Q4359230": {
-        "frequency": 1,
+        "frequency": 2,
         "properties": {
             "P170": {
                 "label": "creator",
@@ -10589,7 +10589,7 @@
         }
     },
     "Q15632617": {
-        "frequency": 1,
+        "frequency": 2,
         "properties": {
             "P21": {
                 "label": "sex or gender",
@@ -10659,7 +10659,7 @@
         }
     },
     "Q7278": {
-        "frequency": 1,
+        "frequency": 2,
         "properties": {
             "P17": {
                 "label": "country",
@@ -10720,7 +10720,7 @@
         }
     },
     "Q34876": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P17": {
                 "label": "country",
@@ -11060,7 +11060,7 @@
         }
     },
     "Q494721": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P17": {
                 "label": "country",
@@ -11153,7 +11153,7 @@
         }
     },
     "Q691960": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -11246,7 +11246,7 @@
         }
     },
     "Q123480": {
-        "frequency": 157,
+        "frequency": 196,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -12636,7 +12636,7 @@
         }
     },
     "Q25412763": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P17": {
                 "label": "country",
@@ -12856,7 +12856,7 @@
         }
     },
     "Q1323642": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -13058,7 +13058,7 @@
         }
     },
     "Q842112": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -13171,7 +13171,7 @@
         }
     },
     "Q849866": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",
@@ -13284,7 +13284,7 @@
         }
     },
     "Q15634554": {
-        "frequency": 3,
+        "frequency": 6,
         "properties": {
             "P6": {
                 "label": "head of government",

@@ -5,26 +5,37 @@ def wikidata_to_Table(wikidata_response, template:Table_template_DTO):
     try:
         table = {}
         results = wikidata_response.get('results').get('bindings')
-        expected_properties = [property.UID for property in template.properties]
         # for earch returned element
         for result in results:
+            keys = list(result.keys())
             # As properties are optional, some of the class expected properties might lack in each row, therefore we will fill it with None
-            if len(result.keys()) - 2 < len(expected_properties):
-                print('result with less properties than expected: ', str(len(result.keys())), ', expected: ', str(len(expected_properties)))
-                for expected_property in expected_properties:
-                    if expected_property not in result.keys():
-                        print('adding none for property: ', expected_property)
-                        result[expected_property] = {'type': str(None), 'value': str(None)}
+            for expected_property in template.properties:
+                if expected_property.UID not in result.keys():
+                    # print('adding none for property: ', expected_property)
+                    result[expected_property.UID] = {'type': str(None), 'value': str(None)}
+                    if expected_property.type == 'WikibaseItem':
+                        result[expected_property.UID +'Label'] = {'type': str(None), 'value': str(None)}
 
-                print('New number of keys: ', str(len(result.keys())))
             #for each varible of the element
             for key,value in result.items():
-                # if key not in the table we will add it
-                if key not in table.keys():
-                    table[key] = []
-                table[key].append(value.get('value'))
+                if key == 'item' or key == 'itemLabel':
+                    # if key not in the table we will add it
+                    if key not in table.keys():
+                        table[key] = []
+                    table[key].append(value.get('value'))
+                elif 'Label' not in key:
+                    # if key not in the table we will add it
+                    if key not in table.keys():
+                        table[key] = []
+                    value = value.get('value') if result.get(key + 'Label') is None else result.get(key + 'Label').get('value')
+                    table[key].append(value)
             
         
+        if len(table.keys()) == 0:
+            for header in wikidata_response.get('head').get('vars'):
+                if 'Label' not in header:
+                    table[header] = []
+            table['itemLabel'] = []
         return table
     
     except Exception as e:

@@ -34,6 +34,8 @@ def example(question: QUERY_DTO):
 
          question.text = res.get('json').get('text')
 
+      print('QUESTION: ', question.text)
+      
       # Get question links to Wikidata KG
 
       res = link_graph_elements(question.text)
@@ -42,20 +44,26 @@ def example(question: QUERY_DTO):
       
       linked_elements = res.get('json')
 
+      print('LINKED ELEMENTS: ', linked_elements)
+
       # Get the related tables
       res = get_question_tables(linked_elements)
       if res.get('code') != 200:
-         raise HTTPException(status_code=502, detail='Error retieving the class tables from the template service.' + res.get('text')) 
+         raise HTTPException(status_code=502, detail='Error retieving the class tables from the template service.' + str(res.get('text'))) 
 
       tables = res.get('json')
+
+      print("CLASS TABLES: ", tables.keys())
 
       # Ask TAPAS using each table
       answers = []
       for key,table in tables.items():
+         print('table: ', key)
          res = ask_tapas(table=table, question=question.text)
          if res.get('code') != 200:
             raise HTTPException(status_code=502, detail='Error connecting with TAPAS service: ' + res.get('text')) 
          
+         print('answer: ', res.get('json'))
          answers.append(res.get('json'))
       return answers
    except HTTPException as e:

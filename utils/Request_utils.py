@@ -33,8 +33,9 @@ def query_api(method:str, url:str, headers:dict, params:dict, payload, attempts:
     
     except Exception as e:
         print('---------------------------------------------------------------------------------')
-        print('Error with request, method: ', method, ', url: ', url, ', headers: ', headers, ', params: ', params, ', json_payload: ', payload)
+        print('Error with request, method: ', method, ', url: ', url)
         print('Error: ', str(e))
+        print('Received response: ', res.text)
         print('---------------------------------------------------------------------------------')
         return { 'code': res.status_code, 'json' : None, 'text': res.text }
     

@@ -187,7 +187,11 @@ def get_question_tables(linked_data : Linked_data_DTO):
 
         print('templates returned: ', str(question_templates.keys()))
 
-        return get_tables_by_template(question_templates, linked_data.entities)
+        question_tables = get_tables_by_template(question_templates, linked_data.entities)
+
+        #save_json('templates_service/data/response_tables.json', question_tables.get('Q5'))
+
+        return question_tables
 
     except HTTPException as e:
         raise e
@@ -199,6 +203,7 @@ def get_question_tables(linked_data : Linked_data_DTO):
 @app.put(templates_service.get('templates_update_endpoint'))
 def update_with_remote_QALD_json(dataset : QALD_json_DTO, lang : str = Query(
         default='en', min_length=2, max_length=5, regex="^(es|en)$"
+
     )):
     try:
 
