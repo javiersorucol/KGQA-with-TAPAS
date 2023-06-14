@@ -9,11 +9,17 @@ from typing import List
 from utils.Request_utils import query_api
 from utils.Configuration_utils import read_config_file
 
-from DTOs.graph_query_DTOs import Table_templates_DTO, Table_template_DTO,Table_template_property_DTO
-from DTOs.DTO_factory import wikidata_to_Table
+import copy
+from pathlib import Path
+
+config_file_path = 'graph_query_service/Config/Config.ini'
+
+# check if required config files exist
+if not Path(config_file_path).is_file():
+    print('Config file was not found for the graph query service.')
+    exit()
 
 # Reading the config file
-config_file_path = 'graph_query_service/Config/Config.ini'
 config = read_config_file(config_file_path)
 
 # saving config vars
@@ -30,28 +36,13 @@ kg_query_payload = dict(config.items('KG_QUERY_PAYLOAD'))
 kg_query_params = dict(config.items('KG_QUERY_PARAMS'))
 
 # sparql queries
-classes_sparql = config['SPARQL']['classes']
-subclasses_sparql = config['SPARQL']['subclasses']
-union_sparql = config['SPARQL']['union']
-extra_properties_sparql = config['SPARQL']['extra_properties']
-parents_sparql = config['SPARQL']['parents']
-properties_sparql = config['SPARQL']['properties']
-table_sparql = config['SPARQL']['table']
-table_property_template = config['SPARQL']['table_property_template']
-table_property_template_with_label = config['SPARQL']['table_property_template_with_label']
-complete_query = config['SPARQL']['complete_query']
+labels_sparql = config['SPARQL']['labels']
 
 # Graph ontology UID
 ontology_prefix = config['KNOWLEDGE_GRAPH']['ontology_prefix']
-class_property_UID = config['KNOWLEDGE_GRAPH']['class_property_UID']
-subclass_property_UID = config['KNOWLEDGE_GRAPH']['subclass_property_UID']
-union_property_UID = config['KNOWLEDGE_GRAPH']['union_property_UID']
-extra_properties_UID = config['KNOWLEDGE_GRAPH']['extra_properties_UID']
-class_properties_UID = config['KNOWLEDGE_GRAPH']['class_properties_UID']
 
 banned_data_types = config.get('KNOWLEDGE_GRAPH', 'banned_data_types').split()
 number_of_attempts = int(config['SERVER_PARAMS']['number_of_attempts'])
-table_max_lenght = config['SERVER_PARAMS']['table_max_lenght']
 
 # Reding the service configurations
 app_config_file_path = 'App_config.ini'
@@ -61,361 +52,163 @@ graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
 app = FastAPI()
 
 ### endpoints
-# Get entity info
-@app.get(graph_query_service.get('entity_endpoint') + '{entity_UID}')
+
+# Get entity data
+@app.get('/entity/table/{entity_UID}')
+def get_entity_table(entity_UID : str):
+    def filter_properties(pair):
+        # function to filter the banned properties types
+        key, value = pair
+        if value[0].get('mainsnak').get('datatype') not in banned_data_types:
+            return True
+        else:
+            return False
+    
+    def filter_actual_values(values : List):
+        # function to filter prefered values
+        prefered_values = list(filter(lambda x: x.get('rank') == 'preferred',values))
+        if len(prefered_values) == 0:
+            return values
+        else:
+            return prefered_values
+
+    try:    
+        global banned_data_types
+        global entity_prefix
+
+        # get the entity data
+        entity_dto = get_entity_data(entity_UID)
+
+        # initialize base elements on the tables
+        entity_table_base = {
+            'URI' : [entity_prefix + entity_dto.get('id')],
+            'label' : [entity_dto.get('labels').get('en').get('value') if entity_dto.get('labels').get('en') is not None else ''],
+            'description' : [entity_dto.get('descriptions').get('en').get('value') if entity_dto.get('descriptions').get('en') is not None else ''],
+            'aliases' : [ list_to_str([ x.get('value') for x in entity_dto.get('aliases').get('en') ]) if entity_dto.get('aliases').get('en') is not None else '' ]
+            }
+
+        # we will providef a table with the values uris and a table with the values labels
+        entity_table_URI = copy.deepcopy(entity_table_base)
+        entity_table_labels = copy.deepcopy(entity_table_base)
+
+        # we will filter banned properties types
+        filtered_properties = dict(filter(filter_properties, entity_dto.get('claims').items()))
+        
+        # we will store unique entities and properties uids to construct a labels mapping dict
+        unique_entity_UIDs = []
+        property_UIDs = list(filtered_properties.keys())
+
+        # for each filtered property
+        for key, values_list in filtered_properties.items():
+            # we will filter prefered values
+            filtered_values = filter_actual_values(values_list)
+            # we will get the value using the datatype
+            filtered_values = [get_value_by_type(x.get('mainsnak').get('datatype'), x.get('mainsnak').get('datavalue')) for x in filtered_values]
+            # we will store the new entity uids
+            unique_entity_UIDs = unique_entity_UIDs + list(filter(lambda x: entity_prefix in x, filtered_values))
+            # we will save the values in the uri table
+            entity_table_URI[key] = filtered_values
+
+        # save only unique values and remove the entity prefix
+        unique_entity_UIDs = [ x.replace(entity_prefix,'') for x in list(set(unique_entity_UIDs)) ]
+
+        # construct a map to get labels usinf the uri
+        labels_map = get_labels_from_UIDs(property_UIDs + unique_entity_UIDs)
+
+        # for each column in the uri table
+        for key, values_list in entity_table_URI.items():
+            # only for columns that arent in the labels table
+            if entity_table_labels.get(key) is None:
+                # if there's an available mapping value, use the value in any other case keep the value of the uri table
+                labels = [ labels_map.get(x) if labels_map.get(x) is not None else x for x in values_list]
+                # store the values in string form in the labels table
+                entity_table_labels[ labels_map.get(entity_prefix + key) ] = [ list_to_str(labels) ]
+                # modify to use the string form in the uri table
+                entity_table_URI[key] = [ list_to_str(values_list) ]
+
+        return { 'labels_table' : entity_table_labels, 'uri_table' : entity_table_URI }
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while generating entity table. Error: ' + str(e))
+
+### Functions
+def get_labels_from_UIDs(uids : List, prefix : str = 'wd'):
+    def get_query_header(uids : List, prefix : str):
+        # function to  construct the header of the sparql  query using a template
+        header_template = Template('${prefix}:${uid} rdfs:label ?${uid}Label')
+        headers = []
+        for uid in uids:
+            headers.append(header_template.substitute({ 'uid': uid, 'prefix' : prefix }))
+        return ' . '.join(headers)
+    
+    def get_query_body(uids : List, prefix : str):
+        # function to  construct the body of the sparql  query using a template
+        body_template = Template('${prefix}:${uid} rdfs:label ?${uid}Label filter(lang(?${uid}Label)="en")')
+        body = []
+        for uid in uids:
+            body.append(body_template.substitute({ 'uid' : uid, 'prefix' : prefix }))
+        return ' . '.join(body)
+    
+    try:
+        # query wikidata to obtain labels
+        res = sparql_query_kg(sparql=labels_sparql, sparql_params={ 
+            'headers' : get_query_header(uids, prefix),
+            'body' : get_query_body(uids, prefix)
+        })
+
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Unexpected error while querying wikidata for labels. Error: ' + str(e))
+
+        labels_map = {}
+
+        # populate the dict with the results
+        for element in res.get('json').get('results').get('bindings'):
+            labels_map[element.get('subject').get('value')] = element.get('object').get('value')
+
+        return labels_map
+    
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while obtaining labels. Error: ' + str(e))
+
+
+def list_to_str(list : List):
+    # join list elements using ', ' e.g. for [1,2,3] returns '1, 2, 3'
+    return ', '.join(list)
+
 def get_entity_data(entity_UID : str):
+    # query wikidata to get an entity information
     try:
         res = query_api('get',(entity_prefix  + entity_UID), entity_query_headers, entity_query_params, entity_query_payload, number_of_attempts)
 
-        if res.get('code') != 200:
-            if res.get('code') == 400:
-                raise HTTPException(status_code=400, detail='Error, entity not found. Code ' + str(res.get('code')) + " : " + res.get('text'))
-            else:
-                raise HTTPException(status_code=502, detail='Wikidata External API error. Code ' + str(res.get('code')) + " : " + res.get('text'))
+        # if entity uid is incorrect
+        if res.get('code') == 400:
+            raise HTTPException(status_code=400, detail='Error, entity not found. Code ' + str(res.get('code')) + " : " + res.get('text'))
+        
+        # any other error
+        elif res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Wikidata External API error. Code ' + str(res.get('code')) + " : " + res.get('text'))
 
     
-        query_dto = res.get('json').get('entities').get(entity_UID)
-        entity_dto = {}
-        entity_dto['label'] = query_dto.get('labels').get('en').get('value')
-        entity_dto['UID'] = entity_UID
-        entity_dto['properties'] = {}
+        return res.get('json').get('entities').get(entity_UID)
 
-        for key, value in query_dto.get('claims').items():
-            # initialize the entity properties, the data type is the same for all the property instances
-            data_type = value[0].get('mainsnak').get('datatype')
-            entity_dto['properties'][key] =  { 
-                                            'data_type': data_type,
-                                            'values': []
-                                        }
-            for instance in value:
-                # for every instance of the property append a value
-                entity_dto['properties'][key]['values'].append(get_value_by_type(data_type, instance.get('mainsnak').get('datavalue')))
-
-        return entity_dto
-    
     except HTTPException as e:
         raise e
     
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unknown error while retrieving the information for entity: ' + entity_UID + '. ' + str(e))
 
-# Get Entity Classes
-@app.get(graph_query_service.get('entity_classes_endpoint') + '{entity_UID}')
-def get_entity_classes(entity_UID : str):
-    try:
-
-        res = sparql_query_kg(classes_sparql, { 'entity_UID' : entity_UID, 'class_property_UID' : class_property_UID })
-        
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Wikidata External API error. Code ' + str(res.get('code')) + " : " + res.get('text'))
-
-        # if there are no result
-        if len(res.get('json').get('results').get('bindings')) == 0:
-            raise HTTPException(status_code=400, detail='Error, entity not found, or there are not classes related to this entity. Response: ' + str(res))
-        
-        return [ x.get('class').get('value').replace(entity_prefix,'') for x in res.get('json').get('results').get('bindings')]
-    
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unknown error while retrieving classes for entity: ' + entity_UID + '. ' + str(e))
-
-# Get a class template data
-@app.get(graph_query_service.get('class_template_endpoint') + '{class_UID}')
-def get_class_template( class_UID: str):
-    try:
-        template = { 'frequency': 1,
-        'subclasses' : get_class_subclasses(class_UID),
-        'properties': get_class_properties(class_UID) 
-        }
-        return template
-    
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' template. Error: ' + str(e))
-
-# Fill a table template endpoint
-@app.post(graph_query_service.get('fill_template_endpoint'))
-def fill_templates(templates: Table_templates_DTO):
-    try:
-        tables = {}
-        filter_values = {}
-        entities_list = []
-
-        # using entities to filter tables information
-        for entity in templates.entities_UIDs:
-            # get entity property values
-            entity_info = get_entity_data(entity)
-            entities_list.append(entity_info)
-
-            for key,val in entity_info.get('properties').items():
-            # Save property values to filter, only in properties that work with other wikidata items
-                if val.get('data_type') == 'wikibase-item':
-                    filter_values[key] = list(set(([] if filter_values.get(key) is None else filter_values.get(key)) + val.get('values')))
-    
-        for template in templates.templates:
-            tables[template.UID] = fill_template(template, filter_values, entities_list)
-            
-        return tables
-        
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpect error while generating the tables. Error: ' + str(e))
-
-
-### Functions
-def fill_template(class_template: Table_template_DTO, filter_values: dict, entities_list: list):
-    
-    def get_filter_conditions(template:Table_template_DTO, filter_values:dict):
-        # filtering to use only properties related to wikibaseitens
-        template_filter_properties = list(filter((lambda x: x.type == 'WikibaseItem'), template.properties))
-        template_properties_UIDs = [property.UID for property in template_filter_properties ]
-        filter_properties = dict(filter( lambda x: x[0] in template_properties_UIDs,filter_values.items()))
-        # If there are no filter properties (shouldn't be the case), we will return 1=1 to keep all results
-        if len(filter_properties) == 0:
-            return '1=1'
-        
-        filter_conditions = []
-        for key, values in filter_properties.items():
-            if values is not None:
-                for val in values:
-                    if val is not None:
-                        filter_conditions.append('?' + key + ' = wd:' + val)
-
-        return ' || '.join(filter_conditions)
-
-    def get_properties_declaration(properties: List[Table_template_property_DTO]):
-        prop_UIDs = [('?' + property.UID) + ('' if property.type != 'WikibaseItem' else (' ?' + property.UID + 'Label'))  for property in properties]
-        return ' '.join(prop_UIDs)
-
-    def get_properties_list(properties: List[Table_template_property_DTO]):
-        properties_list = [Template(table_property_template if property.type != 'WikibaseItem' else table_property_template_with_label).substitute({'property_UID' : property.UID }) for property in properties]
-        return ' '.join(properties_list)
-    
-    def class_match(entity : dict, class_UID: str):
-        # Look if entity is relted to class by it's class_UID
-        try:
-            entity_classes = next( filter((lambda x: x[0] == class_property_UID) , entity.get('properties').items()) )[1]
-            if class_UID in entity_classes.get('values'):
-                return True
-            else:
-                return False
-
-
-        except Exception as e:
-        # If by some reason we can't find the entity classes, we will return false
-            return False
-    
-    def get_specific_entities_filter(entities_list:dict):
-        filter = []
-        for entity in entities_list:
-            filter.append('?item=wd:' + entity.get('UID'))
-        return '||'.join(filter)
-    
-    try:
-        # We'll generate the strings to fill the sparql template to query the information for this wikidata class
-        properties_declaration = get_properties_declaration(class_template.properties)
-        properties_list = get_properties_list(class_template.properties)
-        filter_conditions = get_filter_conditions(class_template, filter_values)
-
-        general_query = Template(table_sparql).substitute({
-            'properties_declaration' : properties_declaration,
-            'class_property_UID' : class_property_UID,
-            'class_UID' : class_template.UID,
-            'properties_list' : properties_list,
-            'limit' : table_max_lenght,
-            'filter_conditions' : filter_conditions
-        })
-        specific_entities_query = Template(table_sparql).substitute({
-            'properties_declaration' : properties_declaration,
-            'class_property_UID' : class_property_UID,
-            'class_UID' : class_template.UID,
-            'properties_list' : properties_list,
-            'limit' : table_max_lenght,
-            'filter_conditions' : get_specific_entities_filter(entities_list)
-        })
-        
-        res = sparql_query_kg(complete_query, {
-            'specific_entities_query' : specific_entities_query,
-            'general_query' : general_query,
-            'limit' : table_max_lenght,
-        })
-
-
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Wikidata Query API error. Code ' + str(res.get('code')) + " : " + str(res.get('text')))
-    
-        # Let's change the response to match the DTO format we require
-        table = wikidata_to_Table(res.get('json'), class_template)
-
-        # change keys to be labels so tapas can work properly
-        table['UID'] = table.pop('item')
-        table['label'] = table.pop('itemLabel')
-        keys = list(table.keys())
-
-        for key in keys:
-            if key != 'UID' and key != 'label':
-                table[next((property.label for property in class_template.properties if property.UID == key), 'None')] = table.pop(key)
-
-        return table
-
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        print('Error: ', str(e))
-        raise HTTPException(status_code=500, detail='Unknown Error presented while filling template: ' + str(class_template.UID) + '. Error: ' + str(e))
-
-def get_class_properties(class_UID : str):
-    try:
-        # Using the properties for this class property to look for properties
-        res = sparql_query_kg(properties_sparql, { 'class_UID' : class_UID, 'class_properties_UID' : class_properties_UID })
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +'properties, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
-        
-        res = res.get('json')
-        class_properties_dict = {}
-        
-        # adding properties
-        for property in res.get('results').get('bindings'):
-            class_properties_dict[property.get('prop').get('value').replace(entity_prefix, '')] = { 
-                'label' : property.get('propLabel').get('value'),
-                'type' : property.get('propType').get('value').replace(ontology_prefix, '') 
-            }
-        
-        # If no properties were found, search for compound classes 
-        if len(class_properties_dict.items()) == 0:
-            union_values = get_class_union_classes(class_UID)
-            properties_source = []
-            properties = {}
-            if len(union_values) > 0:
-                properties_source = union_values
-                
-            else:
-                # check parent clases
-                properties_source = get_class_parents(class_UID)
-                
-                # update if there is extra properties in this class (properties that are not inherit form the parent class)
-                properties.update(get_class_extra_properties(class_UID))
-
-            properties.update(get_related_classes_properties(properties_source))
-            class_properties_dict.update(properties)
-        
-        # Remove no valid data types
-        class_properties_dict = dict(filter(lambda x: x[1]['type'] not in banned_data_types, class_properties_dict.items()))
-
-        return class_properties_dict
-    
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' total properties. Error: ' + str(e))
-
-
-def get_class_parents(class_UID : str):
-    try:
-        res = sparql_query_kg(parents_sparql, { 'class_UID' : class_UID, 'subclass_property_UID' : subclass_property_UID })
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +' parent classes, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
-        
-        return [ x.get('parent').get('value').replace(entity_prefix,'') for x in res.get('json').get('results').get('bindings')]
-    
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' parent classes. Error: ' + str(e))
-
-def get_class_extra_properties(class_UID : str):
-    # Get class extra properties
-    try:
-        res = sparql_query_kg(extra_properties_sparql, { 'class_UID' : class_UID, 'extra_properties_UID' : extra_properties_UID })
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +' extra properties, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
-
-        inherited_properties_dict = {}
-        for property in res.get('json').get('results').get('bindings'):
-            inherited_properties_dict[property.get('prop').get('value').replace(entity_prefix, '')] = {
-                'label' : property.get('propLabel').get('value'),
-                'type' : property.get('propType').get('value').replace(ontology_prefix, '')
-            }
-        
-        return inherited_properties_dict
-    
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' extra properties. Error: ' + str(e))
-
-
-def get_class_union_classes(class_UID : str):
-    try:
-        res = sparql_query_kg(union_sparql, { 'class_UID' : class_UID, 'union_of_property_UID' : union_property_UID })
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +' union classes, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
-        
-        return [ x.get('class').get('value').replace(entity_prefix,'') for x in res.get('json').get('results').get('bindings')]
-    
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' union classes. Error: ' + str(e))
-
-def get_class_subclasses(class_UID : str):
-    try:
-        res = sparql_query_kg(subclasses_sparql, { 'class_UID' : class_UID, 'subclass_property_UID' : subclass_property_UID })
-        if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Error obtaining ' + class_UID +' subclasses, Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
-        
-        return [ x.get('subclass').get('value').replace(entity_prefix,'') for x in res.get('json').get('results').get('bindings')]
-    
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + class_UID + ' subclasses. Error: ' + str(e))
-
-def get_related_classes_properties(related_classes):
-    # get the relted classes properties
-    try:
-        # Query to get the list of class properties and its info
-        properties = {}
-        for source in related_classes:
-            res = sparql_query_kg(properties_sparql, { 'class_UID' : source, 'class_properties_UID' : class_properties_UID })
-            if res.get('code') != 200:
-                raise HTTPException(status_code=502, detail='Error obtaining ' + source +' related classes properties. Wikidata API returned an error to the SPARQL query. Code ' + str(res.get('code')) + " : " + res.get('text'))
-            
-            related_properties_dict = {}
-            for property in res.get('json').get('results').get('bindings'):
-                related_properties_dict[property.get('prop').get('value').replace(entity_prefix, '')] = {
-                    'label' : property.get('propLabel').get('value'),
-                    'type' : property.get('propType').get('value').replace(ontology_prefix, '') }
-            properties.update(related_properties_dict)
-            #templates[source] = { 'freq' : 1, 'subclasses' : self.get_class_subclasses(source), 'props' : props }
-        
-        return properties
-    
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while obtaining ' + str(related_classes) + ' properties. Error: ' + str(e))
-
-
 def get_value_by_type(data_type: str, value: dict):
     try:
         # how to get the value depending on the data type
         if value is not None:
             if data_type == 'wikibase-item':
-                return value.get('value').get('id')
+                return entity_prefix + value.get('value').get('id')
             elif data_type == 'time':
                 return value.get('value').get('time')
             elif data_type == 'monolingualtext':
@@ -433,15 +226,17 @@ def get_value_by_type(data_type: str, value: dict):
         raise HTTPException(status_code=500, detail='Unknown while obtaining the value. Data type: ' + data_type + '. Value src: ' + str(value) + ' Error: ' + str(e))
 
 def sparql_query_kg(sparql: str, sparql_params:dict):
+    # query wikidata with a given sparql
     try:
+        # if the sparql provided is a template we will replace the values
         sparql_template = Template(sparql)
         sparql_query = sparql_template.substitute(sparql_params)
-
 
         kg_query_params = {'format' : 'json'}
 
         xml = "query=" + sparql_query
         
+        # query wikidata
         res = query_api('post', query_endpoint, {'content-type':'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent' : 'SubgraphBot/0.1, bot for obtention of class subgraphs (javiersorucol1@upb.edu)' }, kg_query_params, xml, paylod_type='data')
 
         return res
