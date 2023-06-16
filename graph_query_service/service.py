@@ -8,6 +8,7 @@ from typing import List
 
 from utils.Request_utils import query_api
 from utils.Configuration_utils import read_config_file
+from utils.Json_utils import read_json, save_json
 
 import copy
 from pathlib import Path
@@ -42,12 +43,22 @@ labels_sparql = config['SPARQL']['labels']
 ontology_prefix = config['KNOWLEDGE_GRAPH']['ontology_prefix']
 
 banned_data_types = config.get('KNOWLEDGE_GRAPH', 'banned_data_types').split()
+banned_words = config.get('KNOWLEDGE_GRAPH', 'banned_words').split()
+
 number_of_attempts = int(config['SERVER_PARAMS']['number_of_attempts'])
+banned_data_path = config['SERVER_PARAMS']['banned_data_path']
 
 # Reding the service configurations
 app_config_file_path = 'App_config.ini'
 app_config = read_config_file(app_config_file_path)
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
+
+banned_data = { 'banned_properties' : [] }
+
+if not os.path.exists(banned_data_path):
+    save_json(filename=banned_data_path, data=banned_data)
+else:
+    banned_data = read_json(banned_data_path)
 
 app = FastAPI()
 
@@ -57,9 +68,12 @@ app = FastAPI()
 @app.get('/entity/table/{entity_UID}')
 def get_entity_table(entity_UID : str):
     def filter_properties(pair):
-        # function to filter the banned properties types
+        # function to filter the banned properties types and banned properties
+        global banned_data
+        global banned_data_types
+
         key, value = pair
-        if value[0].get('mainsnak').get('datatype') not in banned_data_types:
+        if key not in banned_data.get('banned_properties') and value[0].get('mainsnak').get('datatype') not in banned_data_types:
             return True
         else:
             return False
@@ -71,6 +85,22 @@ def get_entity_table(entity_UID : str):
             return values
         else:
             return prefered_values
+        
+    def filter_properties_by_label(label:str, property_uid:str):
+        #function to filter properties with banned words in the label
+        global banned_words
+        global banned_data
+        global banned_data_path
+
+        label = label.lower()
+
+        for word in banned_words:
+            if word in label:
+                banned_data['banned_properties'].append(property_uid)
+                save_json(filename=banned_data_path, data=banned_data)
+                return False
+            
+        return True
 
     try:    
         global banned_data_types
@@ -103,17 +133,24 @@ def get_entity_table(entity_UID : str):
             # we will filter prefered values
             filtered_values = filter_actual_values(values_list)
             # we will get the value using the datatype
-            filtered_values = [get_value_by_type(x.get('mainsnak').get('datatype'), x.get('mainsnak').get('datavalue')) for x in filtered_values]
+            property_datatype = values_list[0].get('mainsnak').get('datatype')
+            filtered_values = list(filter(lambda x: x is not None, [get_value_by_type(property_datatype, x.get('mainsnak').get('datavalue')) for x in filtered_values]))
             # we will store the new entity uids
-            unique_entity_UIDs = unique_entity_UIDs + list(filter(lambda x: entity_prefix in x, filtered_values))
+            if property_datatype == 'wikibase-item' or property_datatype == 'wikibase-property':
+                unique_entity_UIDs = unique_entity_UIDs + filtered_values
             # we will save the values in the uri table
             entity_table_URI[key] = filtered_values
 
         # save only unique values and remove the entity prefix
         unique_entity_UIDs = [ x.replace(entity_prefix,'') for x in list(set(unique_entity_UIDs)) ]
 
+        # if 'Q25556329' in unique_entity_UIDs:
+        #     print(key)
+
         # construct a map to get labels usinf the uri
         labels_map = get_labels_from_UIDs(property_UIDs + unique_entity_UIDs)
+
+        discarted_properties = []
 
         # for each column in the uri table
         for key, values_list in entity_table_URI.items():
@@ -122,9 +159,20 @@ def get_entity_table(entity_UID : str):
                 # if there's an available mapping value, use the value in any other case keep the value of the uri table
                 labels = [ labels_map.get(x) if labels_map.get(x) is not None else x for x in values_list]
                 # store the values in string form in the labels table
-                entity_table_labels[ labels_map.get(entity_prefix + key) ] = [ list_to_str(labels) ]
-                # modify to use the string form in the uri table
-                entity_table_URI[key] = [ list_to_str(values_list) ]
+                property_label = labels_map.get(entity_prefix + key)
+
+                # Do not work if the prperty label contains substring ctegory or commons as they have no value for our table
+                if filter_properties_by_label(label=property_label, property_uid=key):
+                    entity_table_labels[ property_label ] = [ list_to_str(labels) ]
+                    # modify to use the string form in the uri table
+                    entity_table_URI[key] = [ list_to_str(values_list) ]
+                
+                else:
+                    discarted_properties.append(key)
+
+        # remove category and commons properties from uri table
+        for key in discarted_properties:
+            del entity_table_URI[key]
 
         return { 'labels_table' : entity_table_labels, 'uri_table' : entity_table_URI }
 
@@ -158,16 +206,37 @@ def get_labels_from_UIDs(uids : List, prefix : str = 'wd'):
             'headers' : get_query_header(uids, prefix),
             'body' : get_query_body(uids, prefix)
         })
-
+        
         if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Unexpected error while querying wikidata for labels. Error: ' + str(e))
-
+            # if the query did not work, we will query one label at the time
+            res['json'] = {'results':{'bindings':[]}}
+            
         labels_map = {}
+        results = []
+
+        # if no elements are returne it might be because a element has no label, in this case we will query the label element by element and return the uid
+        # for the unlabeled element
+        if len(res.get('json').get('results').get('bindings')) == 0:
+            for uid in uids:
+                res = sparql_query_kg(sparql=labels_sparql, sparql_params={ 
+                    'headers' : get_query_header([uid], prefix),
+                    'body' : get_query_body([uid], prefix)
+                })
+                
+                if res.get('code') != 200:
+                    raise HTTPException(status_code=502, detail='Unexpected error while querying wikidata for labels. Error: ' + res.get('text'))
+                
+                if len(res.get('json').get('results').get('bindings')) == 0:
+                    results.append({'subject': {'value':uid}, 'object': {'value':uid}})
+                else:
+                    results.append(res.get('json').get('results').get('bindings')[0])
+        else:
+            results = res.get('json').get('results').get('bindings')
 
         # populate the dict with the results
-        for element in res.get('json').get('results').get('bindings'):
+        for element in results:
             labels_map[element.get('subject').get('value')] = element.get('object').get('value')
-
+        
         return labels_map
     
     except HTTPException as e:
@@ -217,7 +286,12 @@ def get_value_by_type(data_type: str, value: dict):
                 return (value.get('value').get('amount')) 
             elif data_type == 'globe-coordinate':
                 return 'Latitud: ' + str(value.get('value').get('latitude')) + ' Longitud: ' + str(value.get('value').get('longitude')) + ' Altitud: ' + str(value.get('value').get('altitude')) + ' Presición: ' + str(value.get('value').get('precision')) + ' Planeta: ' + value.get('value').get('globe')
+            elif data_type == 'wikibase-property':
+                return entity_prefix + value.get('value').get('id')
+            elif data_type == 'string' or data_type == 'url':
+                return value.get('value')
             else:
+                print(data_type, ': ' , value)
                 return value.get('value')
         else:
             return None
@@ -231,6 +305,8 @@ def sparql_query_kg(sparql: str, sparql_params:dict):
         # if the sparql provided is a template we will replace the values
         sparql_template = Template(sparql)
         sparql_query = sparql_template.substitute(sparql_params)
+
+        #print(sparql_query)
 
         kg_query_params = {'format' : 'json'}
 
