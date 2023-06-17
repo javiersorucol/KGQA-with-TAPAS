@@ -45,7 +45,6 @@ ontology_prefix = config['KNOWLEDGE_GRAPH']['ontology_prefix']
 banned_data_types = config.get('KNOWLEDGE_GRAPH', 'banned_data_types').split()
 banned_words = config.get('KNOWLEDGE_GRAPH', 'banned_words').split()
 
-number_of_attempts = int(config['SERVER_PARAMS']['number_of_attempts'])
 banned_data_path = config['SERVER_PARAMS']['banned_data_path']
 
 # Reding the service configurations
@@ -253,7 +252,7 @@ def list_to_str(list : List):
 def get_entity_data(entity_UID : str):
     # query wikidata to get an entity information
     try:
-        res = query_api('get',(entity_prefix  + entity_UID), entity_query_headers, entity_query_params, entity_query_payload, number_of_attempts)
+        res = query_api('get',(entity_prefix  + entity_UID), entity_query_headers, entity_query_params, entity_query_payload)
 
         # if entity uid is incorrect
         if res.get('code') == 400:

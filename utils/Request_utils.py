@@ -48,8 +48,22 @@ app_config = read_config_file(app_config_file_path)
 translation_service = dict(app_config.items('TRANSLATION_SERVICE'))
 linking_service = dict(app_config.items('LINKING_SERVICE'))
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
-templates_service = dict(app_config.items('TEMPLATES_SERVICE'))
 tapas_service = dict(app_config.items('TAPAS_SERVICE'))
+
+def get_entity_table(entity_UID:str):
+    try:
+        global graph_query_service
+        
+        url = get_service_url(graph_query_service, 'entity_table_endpoint')
+        res = query_api('get', url + entity_UID, {}, {}, {})
+        
+        return res
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying Graph Query service for the entity table: ' + str(e))
 
 def ask_tapas(table:dict, question:str):
     try:
@@ -60,6 +74,7 @@ def ask_tapas(table:dict, question:str):
             'question':question,
             'table': table
         })
+        
         return res
 
     except HTTPException as e:
@@ -67,21 +82,6 @@ def ask_tapas(table:dict, question:str):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while querying TAPAS service for an answer: ' + str(e))
-
-
-def fill_templates(templates:dict):
-    try:
-        global graph_query_service
-        
-        url = get_service_url(graph_query_service, 'fill_template_endpoint')
-        res = query_api('post', url, {}, {}, templates)
-        return res
-
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while querying the graph query service to fill the templates: ' + str(e))
 
 def translate(query:str, lang:str):
     # to translate we will query the translation service
@@ -121,50 +121,6 @@ def link_graph_elements(query:str):
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while querying linking service: ' + str(e))
 
-
-def get_entity_classes(entity_UID:str):
-    try:
-        global graph_query_service
-        
-        url = get_service_url(graph_query_service, 'entity_classes_endpoint') + entity_UID
-        res = query_api('get', url, {}, {}, {})
-
-        return res
-
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while obtaining informtion from entity ' + entity_UID + ': ' + str(e))
-
-def generate_class_template(class_UID:str):
-    try:
-        global graph_query_service
-
-        url = get_service_url(graph_query_service, 'class_template_endpoint') + class_UID
-        res = query_api('get', url, {}, {}, {})
-
-        return res
-
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while generating class template for class ' + class_UID + ': ' + str(e))
-
-def get_question_tables(linked_data:dict):
-    try:
-        global templates_service
-        url = get_service_url(templates_service, 'question_templates_endpoint')
-        res = query_api('post', url, {}, {}, linked_data)
-
-        return res
-    
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while generating class tables : ' + str(e))
 
 def get_service_url(service:dict, enpoint:str):
     try:    

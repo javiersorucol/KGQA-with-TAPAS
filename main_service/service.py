@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
 
-from utils.Request_utils import translate, link_graph_elements, get_question_tables, ask_tapas
+from utils.Request_utils import translate, link_graph_elements , ask_tapas, get_entity_table
 
 from DTOs.main_DTOs import QUERY_DTO
 
@@ -46,25 +46,28 @@ def example(question: QUERY_DTO):
 
       print('LINKED ELEMENTS: ', linked_elements)
 
-      # Get the related tables
-      res = get_question_tables(linked_elements)
-      if res.get('code') != 200:
-         raise HTTPException(status_code=502, detail='Error retieving the class tables from the template service.' + str(res.get('text'))) 
+      # Get the related entity tables
+      entity_tables = {}
+      for entity in linked_elements.get('entities'):
+         res = get_entity_table(entity.get('UID'))
+         
+         if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Error retieving the entity tables from the template service.' + str(res.get('text'))) 
 
-      tables = res.get('json')
+         entity_tables[entity.get('UID')] = res.get('json')
 
-      print("CLASS TABLES: ", tables.keys())
+      print("ENTITY TABLES: ", entity_tables.keys())
 
       # Ask TAPAS using each table
-      answers = []
-      for key,table in tables.items():
+      answers = {}
+      for key,tables in entity_tables.items():
          print('table: ', key)
-         res = ask_tapas(table=table, question=question.text)
+         res = ask_tapas(table=tables.get('labels_table'), question=question.text)
          if res.get('code') != 200:
             raise HTTPException(status_code=502, detail='Error connecting with TAPAS service: ' + res.get('text')) 
          
          print('answer: ', res.get('json'))
-         answers.append(res.get('json'))
+         answers[key] = res.get('json')
       return answers
    except HTTPException as e:
       raise e
