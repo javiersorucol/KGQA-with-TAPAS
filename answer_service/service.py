@@ -6,19 +6,19 @@ from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
 
-from DTOs.tapas_DTOs import Table_DTO
+from DTOs.answer_DTOs import Table_DTO
 
 import pandas as pd
 from transformers import pipeline
 
 # Reading the config file
-config_file_path = 'tapas_service/Config/Config.ini'
+config_file_path = 'answer_service/Config/Config.ini'
 config = read_config_file(config_file_path)
 
 # Read service configuration
 config = read_config_file('App_config.ini')
 
-tapas_service = dict(config.items('TAPAS_SERVICE'))
+answer_service = dict(config.items('ANSWER_SERVICE'))
 
 
 # initializting tapas
@@ -26,8 +26,8 @@ tqa = pipeline(task="table-question-answering", model="google/tapas-base-finetun
 
 app = FastAPI()
 
-@app.post(tapas_service.get('ask_endpoint'))
-def ask(table_DTO: Table_DTO):
+@app.post(answer_service.get('ask_tapas_endpoint'))
+def ask_tapas(table_DTO: Table_DTO):
    table = pd.DataFrame(table_DTO.table)
    table = table.astype(str)
 

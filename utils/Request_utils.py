@@ -48,7 +48,7 @@ app_config = read_config_file(app_config_file_path)
 translation_service = dict(app_config.items('TRANSLATION_SERVICE'))
 linking_service = dict(app_config.items('LINKING_SERVICE'))
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
-tapas_service = dict(app_config.items('TAPAS_SERVICE'))
+answer_service = dict(app_config.items('ANSWER_SERVICE'))
 
 def get_entity_table(entity_UID:str):
     try:
@@ -67,9 +67,9 @@ def get_entity_table(entity_UID:str):
 
 def ask_tapas(table:dict, question:str):
     try:
-        global tapas_service
+        global answer_service
 
-        url = get_service_url(tapas_service, 'ask_endpoint')
+        url = get_service_url(answer_service, 'ask_tapas_endpoint')
         res = query_api('post', url, {}, {}, {
             'question':question,
             'table': table
@@ -81,7 +81,7 @@ def ask_tapas(table:dict, question:str):
         raise e
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while querying TAPAS service for an answer: ' + str(e))
+        raise HTTPException(status_code=500, detail='Unexpected error while querying answer service for tapas answer: ' + str(e))
 
 def translate(query:str, lang:str):
     # to translate we will query the translation service

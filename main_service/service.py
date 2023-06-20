@@ -64,7 +64,7 @@ def example(question: QUERY_DTO):
          print('table: ', key)
          res = ask_tapas(table=tables.get('labels_table'), question=question.text)
          if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Error connecting with TAPAS service: ' + res.get('text')) 
+            raise HTTPException(status_code=502, detail='Error connecting with Answer service: ' + res.get('text')) 
          
          print('answer: ', res.get('json'))
          answers[key] = res.get('json')
