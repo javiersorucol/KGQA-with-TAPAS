@@ -61,4 +61,4 @@ def ask_gpt(triples_DTO : Triples_DTO):
       raise e
    
    except Exception as e:
-      raise HTTPException(status_code=500, detail='Unexpected error while using TAPAS to answer the question. Error: ' + str(e))
+      raise HTTPException(status_code=500, detail='Unexpected error while using GPT to answer the question. Error: ' + str(e))

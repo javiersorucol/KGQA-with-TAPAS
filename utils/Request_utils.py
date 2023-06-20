@@ -50,7 +50,22 @@ linking_service = dict(app_config.items('LINKING_SERVICE'))
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
 answer_service = dict(app_config.items('ANSWER_SERVICE'))
 
-def get_entity_table(entity_UID:str):
+def get_entity_triples(entity_UID : str):
+    try:
+        global graph_query_service
+        
+        url = get_service_url(graph_query_service, 'entity_triples_endpoint')
+        res = query_api('get', url + entity_UID, {}, {}, {})
+
+        return res
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying Graph Query service for the entity triples: ' + str(e))
+
+def get_entity_table(entity_UID : str):
     try:
         global graph_query_service
         
@@ -65,7 +80,22 @@ def get_entity_table(entity_UID:str):
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while querying Graph Query service for the entity table: ' + str(e))
 
-def ask_tapas(table:dict, question:str):
+def ask_gpt(triples : str, question : str):
+    try:
+        global answer_service
+
+        url = get_service_url(answer_service, 'ask_gpt_endpoint')
+        res = query_api('post', url, {}, {}, { 'triples' : triples, 'question' : question })
+
+        return res
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying answer service for gpt answer: ' + str(e))
+
+def ask_tapas(table : dict, question : str):
     try:
         global answer_service
 
