@@ -9,25 +9,15 @@ from utils.Configuration_utils import read_config_file
 from DTOs.linking_DTOs import Linked_data_DTO,  Question_DTO
 
 from utils.Request_utils import query_api
+from utils.OpenAI_utils import query_open_ai
 
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-from string import Template
-
-import openai
-
 config_file_path = 'linking_service/Config/Config.ini'
-open_ai_key_file_path = '.env'
 
 # check if required config files exist
 if not Path(config_file_path).is_file():
     print('Config file was not found for the linking service.')
-    exit()
-
-if not Path(open_ai_key_file_path).is_file():
-    print('.env file with OPENAI key was not found for the linking service.')
     exit()
 
 # Reading the config file
@@ -49,11 +39,6 @@ prompt_template = config['OPENAI']['prompt_template']
 wikidata_search_engine_url = config['WIKIDATA_SEARCH_ENGINE']['url']
 wikidata_search_engine_params = dict(config.items('WIKIDATA_SEARCH_ENGINE_PARAMS'))
 
-# Read and save OPENAI key
-
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
 # Reding the app configurations to get the service configuration
 app_config_file_path = 'App_config.ini'
 app_config = read_config_file(app_config_file_path)
@@ -63,8 +48,11 @@ app = FastAPI()
 
 @app.post(linking_service.get('link_endpoint'))
 def link_data_with_OpenAI(question : Question_DTO):
+    global prompt_template
     # extract the entity candidates label using OpenAI GPT
-    labels = query_open_ai(question.text)
+    labels = query_open_ai(prompt_template, {'question': question.text}).split(',')
+    print('GPT found named entities: ', labels)
+
     result = {'entities': [], 'relations': []}
     
     # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
@@ -123,28 +111,6 @@ def search_entity_with_wikidata_service(label:str):
     except Exception as e:
         print('Error while querying wikidata search entities service: ', str(e))
         raise HTTPException(status_code=500, detail='Unexpected error using wikidata search entities service. Error: ' + str(e))
-
-
-def query_open_ai(question: str):
-    global prompt_template
-    try:
-        prompt = Template(prompt_template).substitute({'question':question})
-        gpt3_model = 'text-davinci-003'
-        response = openai.Completion.create(
-            engine = gpt3_model,
-            prompt = prompt,
-            max_tokens = 2048,
-            n = 1,
-            stop = None,
-            temperature = 0
-        )
-        answer = response.get('choices')[0].get('text')
-        print('GPT found named entities: ', answer)
-        return answer.split(',')
-    
-    except Exception as e:
-        print('Error while querying openai: ', str(e))
-        raise HTTPException(status_code=502, detail='OpenAI API error: ' + str(e))
 
 def get_open_tapioca_response(question:dict):
     try:
