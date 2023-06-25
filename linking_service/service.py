@@ -46,14 +46,14 @@ linking_service = dict(app_config.items('LINKING_SERVICE'))
 
 app = FastAPI()
 
-@app.post(linking_service.get('link_endpoint'))
+@app.post(linking_service.get('link_endpoint_gpt_v1'))
 def link_data_with_OpenAI(question : Question_DTO):
     global prompt_template
     # extract the entity candidates label using OpenAI GPT
     labels = query_open_ai(prompt_template, {'question': question.text}).split(',')
     print('GPT found named entities: ', labels)
 
-    result = {'entities': [], 'relations': []}
+    result = {'entities': []}
     
     # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
     for label in labels:
@@ -63,59 +63,11 @@ def link_data_with_OpenAI(question : Question_DTO):
     
     return result
 
-@app.post('/link/backup/')
-def link_data(question : Question_DTO):
-    try:
-        response = {}
-        
-        # Query the external falcon API
-        falcon_response = get_falcon_response(question.__dict__)
-
-        # Query the external OpenTapioca API
-        entities = get_open_tapioca_response(question.__dict__)
-        
-        #if there are no opentapioca entities,  we will work with falcon ones
-        if len(entities) == 0:
-            entities = falcon_response.get('entities')
-
-        response['entities'] = entities
-        response['relations'] = falcon_response.get('relations')
-
-        return response
-
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail='Unexpected error linkin data with the question: ' + question.text + ' .Error: ' + str(e))
-
-def search_entity_with_wikidata_service(label:str):
-    try:
-        # ask wikidata search engine to get the information for the given label
-        wikidata_search_engine_params['search'] = label
-        res = query_api('get', wikidata_search_engine_url, payload={}, headers={}, params=wikidata_search_engine_params)
-        
-        if res.get('code') != 200:
-            raise HTTPException(status_code=500, detail='Unexpected error using wikidata search entities service. Error: ' + str(e))
-        
-        # if no results were returned of the success flag is set to 0 return None
-        if len(res.get('json').get('search')) == 0 or res.get('json').get('success') == 0:
-            return None
-
-        return { 'UID': res.get('json').get('search')[0].get('id'), 'label': label }
-    
-    except HTTPException as e:
-        raise e
-
-    except Exception as e:
-        print('Error while querying wikidata search entities service: ', str(e))
-        raise HTTPException(status_code=500, detail='Unexpected error using wikidata search entities service. Error: ' + str(e))
-
-def get_open_tapioca_response(question:dict):
+@app.post(linking_service.get('link_endpoint_opentapioca'))
+def get_open_tapioca_response(question:Question_DTO):
     try:
         res = query_api('post', open_tapioca_api.get('endpoint'), payload={}, headers=open_tapioca_api_headers, params={
-            'query' : question.get('text'),
+            'query' : question.text,
             'lc' : 'en'
         })
         
@@ -141,11 +93,11 @@ def get_open_tapioca_response(question:dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error on server while working with Open Tapioca API. Error:' + str(e))
 
-    
-def get_falcon_response(question: dict):
+@app.post(linking_service.get('link_endpoint_falcon'))
+def get_falcon_response(question: Question_DTO):
     try:
         # Making a query to falcon API
-        res = query_api('post', falcon_api.get('endpoint'), payload=question, headers=falcon_api_headers, params=falcon_api_params)
+        res = query_api('post', falcon_api.get('endpoint'), payload=question.__dict__, headers=falcon_api_headers, params=falcon_api_params)
 
         # Case of receiving an error response
         if res.get('code') != 200:
@@ -157,14 +109,9 @@ def get_falcon_response(question: dict):
         for entity in json.get('entities_wikidata'):
             entity['UID'] = entity.pop('URI').replace(kg_prefix,'')
             entity['label'] = entity.pop('surface form')
-
-        for relation in json.get('relations_wikidata'):
-           relation['UID'] = relation.pop('URI').replace(kg_prefix,'')
-           relation['label'] = relation.pop('surface form')
         
         return {
-            'entities' : json.get('entities_wikidata'),
-            'relations' : json.get('relations_wikidata')
+            'entities' : json.get('entities_wikidata')
         }
 
     except HTTPException as e:
@@ -172,3 +119,25 @@ def get_falcon_response(question: dict):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error on server while working with FALCON 2.0 API. Error:' + str(e))
+
+def search_entity_with_wikidata_service(label:str):
+    try:
+        # ask wikidata search engine to get the information for the given label
+        wikidata_search_engine_params['search'] = label
+        res = query_api('get', wikidata_search_engine_url, payload={}, headers={}, params=wikidata_search_engine_params)
+        
+        if res.get('code') != 200:
+            raise HTTPException(status_code=500, detail='Unexpected error using wikidata search entities service. Error: ' + str(e))
+        
+        # if no results were returned of the success flag is set to 0 return None
+        if len(res.get('json').get('search')) == 0 or res.get('json').get('success') == 0:
+            return None
+
+        return { 'UID': res.get('json').get('search')[0].get('id'), 'label': label }
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        print('Error while querying wikidata search entities service: ', str(e))
+        raise HTTPException(status_code=500, detail='Unexpected error using wikidata search entities service. Error: ' + str(e))

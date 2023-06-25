@@ -140,7 +140,7 @@ def link_graph_elements(query:str):
 
         payload = { 'text' : query }
 
-        url = get_service_url(linking_service, 'link_endpoint')
+        url = get_service_url(linking_service, 'link_endpoint_gpt_v1')
         res = query_api('post', url, {}, {}, payload)
     
         return res
