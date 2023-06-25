@@ -85,7 +85,7 @@ def get_open_tapioca_response(question:Question_DTO):
             if annotation.get('best_qid'):
                 entities.append({ 'UID': annotation['best_qid'], 'label': annotation.get('best_tag_label') })
 
-        return  entities
+        return  { 'entities' : entities }
 
     except HTTPException as e:
         raise e
