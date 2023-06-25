@@ -92,7 +92,6 @@ def get_entity_triples(entity_UID):
 
         # we will filter banned properties types
         filtered_properties = dict(filter(filter_properties, entity_dto.get('claims').items()))
-
         # for each filtered property
         for key, values_list in filtered_properties.items():
             # we will filter prefered values
@@ -110,22 +109,18 @@ def get_entity_triples(entity_UID):
         property_unique_UIDs =  list(filtered_properties.keys())
         # construct a map to get labels using the uids
         sub_labels_map = get_labels_from_UIDs(entity_unique_UIDs + property_unique_UIDs)
-
         # Construct the triples using a rdflib graph
         entity_graph = Graph()
         # Add base properties to the Graph
         entity_graph.add(( Literal('urn:'+label),  Literal('urn:description'), Literal(description)))
         entity_graph.add(( Literal('urn:'+label),  Literal('urn:aliases'), Literal(aliases)))
-
         # for each filtered property
         for key, values_list in filtered_properties.items():
             # if there's an available mapping value, use the value in any other case keep the value of the uri table
             property_datatype = values_list[0].get('mainsnak').get('datatype')
             labels = [ sub_labels_map.get(get_value_by_type(property_datatype, x.get('mainsnak').get('datavalue'),prefix=False)) if sub_labels_map.get(get_value_by_type(property_datatype, x.get('mainsnak').get('datavalue'),prefix=False)) is not None else get_value_by_type(property_datatype, x.get('mainsnak').get('datavalue')) for x in values_list]
-
             # Get the property label
             property_label = sub_labels_map.get(key)
-
             # Do not work if the prperty label contains substring category or commons as they have no value for our table
             if filter_properties_by_label(label=property_label, property_uid=key):
                 # Add the triple
@@ -252,7 +247,7 @@ def filter_properties_by_label(label:str, property_uid:str):
             banned_data['banned_properties'].append(property_uid)
             save_json(filename=banned_data_path, data=banned_data)
             return False
-        
+
     return True
 
 def get_labels_from_UIDs(uids : List):
@@ -317,7 +312,7 @@ def get_label(uid, prefix : str='wd'):
 
 def list_to_str(list : List):
     # join list elements using ', ' e.g. for [1,2,3] returns '1, 2, 3'
-    return ', '.join(list)
+    return ', '.join([ x if x is not None else 'unknown value' for x in list])
 
 def get_entity_data(entity_UID : str):
     # query wikidata to get an entity information

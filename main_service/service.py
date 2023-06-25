@@ -40,7 +40,7 @@ def ask_Wikidata_with_gpt(question: QUERY_DTO):
       # Ask GPT using each table
       answers = {}
       for key,triples in entity_triples.items():
-         print('table: ', key)
+         print('entity: ', key)
          res = ask_gpt(triples=triples.get('triples'), question=question.text)
          if res.get('code') != 200:
             raise HTTPException(status_code=502, detail='Error connecting with Answer service: ' + res.get('text')) 
