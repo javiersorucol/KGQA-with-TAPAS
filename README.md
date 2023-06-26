@@ -52,6 +52,6 @@ The results of the experiment are:
 |    Method   |  endpoint |  Precision (test set)  |  Recall (test set)  |  F1 score (test set)  |  Precision (train set)  |  Recall (train set)  |  F1 score (train set)  |
 |-------------|:---------:|:----------------------:|:-------------------:|:---------------------:|:-----------------------:|:--------------------:|:-----------------:|
 |    GPT v1   | /link/gpt/v1/  |  0.38095  |  0.73846  |  0.50262  |  0.40701  |  0.79474  |  0.53832  |
-|    GPT v2   | /link/gpt/v2/  |    |    |    |    |    |    |
+|    GPT v2   | /link/gpt/v2/  |  0.3884  |  0.7231  |  0.5054  |  0.3918  |  0.7487  |  0.5144  |
 |  Falcon 2.0  | /link/falcon/  |  0.3625  |  0.4462  |  0.4  |  0.3857  |  0.4263  |  0.405  |
 |  OpenTapioca  | /link/opentapioca/  |  0.4308  |  0.56  |  0.487  |  0.5658  |  0.4526  |  0.5029  |

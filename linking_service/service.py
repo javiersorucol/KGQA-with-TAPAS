@@ -12,6 +12,8 @@ from utils.Request_utils import query_api
 from utils.OpenAI_utils import query_open_ai
 
 from pathlib import Path
+import re
+import json
 
 config_file_path = 'linking_service/Config/Config.ini'
 
@@ -34,7 +36,8 @@ open_tapioca_api = dict(config.items('OPEN-TAPIOCA-API'))
 
 kg_prefix = config['KG_DATA']['prefix']
 
-prompt_template = config['OPENAI']['prompt_template']
+ner_prompt_template = config['OPENAI']['ner_prompt_template'].replace(r'\n', '\n')
+selection_prompt_template = config['OPENAI']['selection_prompt_template'].replace(r'\n', '\n')
 
 wikidata_search_engine_url = config['WIKIDATA_SEARCH_ENGINE']['url']
 wikidata_search_engine_params = dict(config.items('WIKIDATA_SEARCH_ENGINE_PARAMS'))
@@ -48,9 +51,9 @@ app = FastAPI()
 
 @app.post(linking_service.get('link_endpoint_gpt_v1'))
 def link_data_with_OpenAI(question : Question_DTO):
-    global prompt_template
+    global ner_prompt_template
     # extract the entity candidates label using OpenAI GPT
-    labels = query_open_ai(prompt_template, {'question': question.text}).split(',')
+    labels = query_open_ai(ner_prompt_template, {'question': question.text}).split(',')
     print('GPT found named entities: ', labels)
 
     result = {'entities': []}
@@ -58,6 +61,23 @@ def link_data_with_OpenAI(question : Question_DTO):
     # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
     for label in labels:
         search_result = search_entity_with_wikidata_service(label)
+        if search_result is not None:
+            result['entities'].append(search_result)
+    
+    return result
+
+@app.post(linking_service.get('link_endpoint_gpt_v2'))
+def link_data_with_OpenAI_v2(question : Question_DTO):
+    global ner_prompt_template
+    # extract the entity candidates label using OpenAI GPT
+    labels = query_open_ai(ner_prompt_template, {'question': question.text}).split(',')
+    print('GPT found named entities: ', labels)
+
+    result = {'entities': []}
+    
+    # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
+    for label in labels:
+        search_result = search_entity_with_wikidata_service_and_OPENAI(label=label, question=question.text)
         if search_result is not None:
             result['entities'].append(search_result)
     
@@ -134,6 +154,40 @@ def search_entity_with_wikidata_service(label:str):
             return None
 
         return { 'UID': res.get('json').get('search')[0].get('id'), 'label': label }
+    
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        print('Error while querying wikidata search entities service: ', str(e))
+        raise HTTPException(status_code=500, detail='Unexpected error using wikidata search entities service. Error: ' + str(e))
+
+def search_entity_with_wikidata_service_and_OPENAI(label:str, question:str):
+    global selection_prompt_template
+    try:
+        # ask wikidata search engine to get the information for the given label
+        wikidata_search_engine_params['search'] = label
+        res = query_api('get', wikidata_search_engine_url, payload={}, headers={}, params=wikidata_search_engine_params)
+        
+        if res.get('code') != 200:
+            raise HTTPException(status_code=500, detail='Unexpected error using wikidata search entities service. Error: ' + res)
+
+        # we will remove elements with no label or description as they are required for this approach
+        results = list(filter(lambda x:  x.get('label') is not None and x.get('description') is not None, res.get('json').get('search')))
+        # if no results were returned of the success flag is set to 0 return None
+        if len(results) == 0 or res.get('json').get('success') == 0:
+            print('No match found for: ', label)
+            return None
+
+        candidates = ['"UID":"' + x.get('id') + '", "label":"' + x.get('label') + '", "description":"' + x.get('description') + '"' for x in results]
+
+        res = query_open_ai(selection_prompt_template, {'question': question, 'candidates': '\n'.join(candidates)})
+
+        best_candidate = json.loads(res)
+
+        #best_candidate = {'UID':re.findall(r'Q\d+', res[0])[0], 'label':re.findall('".*"', res[1])[0][1:-1]}
+
+        return best_candidate
     
     except HTTPException as e:
         raise e

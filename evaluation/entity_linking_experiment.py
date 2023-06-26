@@ -19,11 +19,12 @@ linking_service = dict(config.items('LINKING_SERVICE'))
 linking_url = 'http://' + linking_service.get('ip') + ':' + linking_service.get('port')
 
 link_endpoint_gpt_v1 = linking_service.get('link_endpoint_gpt_v1')
+link_endpoint_gpt_v2 = linking_service.get('link_endpoint_gpt_v2')
 link_endpoint_falcon = linking_service.get('link_endpoint_falcon')
 link_endpoint_opentapioca = linking_service.get('link_endpoint_opentapioca')
 
 # modify this var depending what endpoint you want to evaluate
-selected_endpoint = link_endpoint_opentapioca
+selected_endpoint = link_endpoint_gpt_v2
 print('Testing endpoind: ', selected_endpoint)
 
 results = {}
@@ -57,7 +58,7 @@ def evaluate_dataset(dataset: dict):
             })
 
             if res.get('code') != 200:
-                raise Exception('Entity linking service answered with an error. Code: ' + str(res.get('code')) + ' Error: ' + res.get('text'))
+                raise Exception('Entity linking service answered with an error. Code: ' + str(res))
             
             actual_answer = [x.get('UID') for x in res.get('json').get('entities')]
             TP, FP, FN = compare_answers(actual_answers=actual_answer, expected_answers=question.get('linked_entities'), TP=TP, FP=FP, FN=FN)
