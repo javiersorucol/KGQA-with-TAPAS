@@ -29,7 +29,7 @@ def query_api(method:str, url:str, headers:dict, params:dict, payload, attempts:
             if res.status_code == 200:
                 break
         
-        return { 'code': res.status_code, 'json' : res.json() }
+        return { 'code': res.status_code, 'json' : res.json(), 'text': res.text }
     
     except Exception as e:
         print('---------------------------------------------------------------------------------')
