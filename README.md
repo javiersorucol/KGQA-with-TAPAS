@@ -51,7 +51,7 @@ In this experiment we compare two versions of our GPT entity linker with Falcon 
 The results of the experiment are:
 |    Method   |  endpoint |  Precision (test set)  |  Recall (test set)  |  F1 score (test set)  |  Precision (train set)  |  Recall (train set)  |  F1 score (train set)  |
 |-------------|:---------:|:----------------------:|:-------------------:|:---------------------:|:-----------------------:|:--------------------:|:-----------------:|
-|    GPT v1   | /link/gpt/v1/  |  0.38095  |  0.73846  |  0.50262  |  0.40701  |  0.79474  |  0.53832  |
-|    GPT v2   | /link/gpt/v2/  |  0.3884  |  0.7231  |  0.5054  |  0.3918  |  0.7487  |  0.5144  |
+|    GPT v1   | /link/gpt/v1/  |  0.5341  |  0.7231  |  0.6144  |  0.5424  | 0.7737  |  0.6377  |
+|    GPT v2   | /link/gpt/v2/  |  0.5057  |  0.6769  |  0.5789  |  0.5092  |  0.7263  |  0.5986  |
 |  Falcon 2.0  | /link/falcon/  |  0.3625  |  0.4462  |  0.4  |  0.3857  |  0.4263  |  0.405  |
 |  OpenTapioca  | /link/opentapioca/  |  0.4308  |  0.56  |  0.487  |  0.5658  |  0.4526  |  0.5029  |
