@@ -56,25 +56,14 @@ def link_data_main(question : Question_DTO):
     # prompt in order to reduce the number of required prompts in the pipeline, the main_entity_prompt_template contains the chosen method prompt as one of
     # the instructions of the prompt, then it will only keep the main entity of the question
     global main_entity_prompt_template
-    # extract the entity candidates label using OpenAI GPT
-    labels = query_open_ai(main_entity_prompt_template, {'question': question.text}).split(',')
-    print('GPT found named entities: ', labels)
-
-    result = {'entities': []}
-
-    # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
-    for label in labels:
-        search_result = search_entity_with_wikidata_service(label)
-        if search_result is not None:
-            result['entities'].append(search_result)
     
-    return result
+    # We will call the chosen method (gpt v1) and run it with the main template
+    return link_data_with_OpenAI(question=question, prompt_template=main_entity_prompt_template)
 
 @app.post(linking_service.get('link_endpoint_gpt_v1'))
-def link_data_with_OpenAI(question : Question_DTO):
-    global ner_prompt_template
+def link_data_with_OpenAI(question : Question_DTO, prompt_template : str = ner_prompt_template):
     # extract the entity candidates label using OpenAI GPT
-    labels = query_open_ai(ner_prompt_template, {'question': question.text}).split(',')
+    labels = [label.strip() for label in query_open_ai(prompt_template, {'question': question.text}).split(',')]
     print('GPT found named entities: ', labels)
 
     result = {'entities': []}
@@ -88,10 +77,9 @@ def link_data_with_OpenAI(question : Question_DTO):
     return result
 
 @app.post(linking_service.get('link_endpoint_gpt_v2'))
-def link_data_with_OpenAI_v2(question : Question_DTO):
-    global ner_prompt_template
+def link_data_with_OpenAI_v2(question : Question_DTO, prompt_template : str = ner_prompt_template):
     # extract the entity candidates label using OpenAI GPT
-    labels = query_open_ai(ner_prompt_template, {'question': question.text}).split(',')
+    labels = [label.strip() for label in query_open_ai(prompt_template, {'question': question.text}).split(',')]
     print('GPT found named entities: ', labels)
 
     result = {'entities': []}
