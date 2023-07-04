@@ -36,6 +36,7 @@ open_tapioca_api = dict(config.items('OPEN-TAPIOCA-API'))
 
 kg_prefix = config['KG_DATA']['prefix']
 
+main_entity_prompt_template= config['OPENAI']['main_entity_prompt_template'].replace(r'\n', '\n')
 ner_prompt_template = config['OPENAI']['ner_prompt_template'].replace(r'\n', '\n')
 selection_prompt_template = config['OPENAI']['selection_prompt_template'].replace(r'\n', '\n')
 
@@ -48,6 +49,26 @@ app_config = read_config_file(app_config_file_path)
 linking_service = dict(app_config.items('LINKING_SERVICE'))
 
 app = FastAPI()
+
+@app.post('/link/main')
+def link_data_main(question : Question_DTO):
+    # this endpoint performs the best selected linking method (gpt v1) and return only the main entity of the question, we perform this in the linking
+    # prompt in order to reduce the number of required prompts in the pipeline, the main_entity_prompt_template contains the chosen method prompt as one of
+    # the instructions of the prompt, then it will only keep the main entity of the question
+    global main_entity_prompt_template
+    # extract the entity candidates label using OpenAI GPT
+    labels = query_open_ai(main_entity_prompt_template, {'question': question.text}).split(',')
+    print('GPT found named entities: ', labels)
+
+    result = {'entities': []}
+
+    # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
+    for label in labels:
+        search_result = search_entity_with_wikidata_service(label)
+        if search_result is not None:
+            result['entities'].append(search_result)
+    
+    return result
 
 @app.post(linking_service.get('link_endpoint_gpt_v1'))
 def link_data_with_OpenAI(question : Question_DTO):

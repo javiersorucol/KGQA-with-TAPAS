@@ -96,8 +96,9 @@ def get_entity_triples(entity_UID):
         for key, values_list in filtered_properties.items():
             # we will filter prefered values
             filtered_values = filter_actual_values(values_list)
+            filtered_properties[key] = filtered_values
             # we will get the value using the datatype
-            property_datatype = values_list[0].get('mainsnak').get('datatype')
+            property_datatype = filtered_values[0].get('mainsnak').get('datatype')
             filtered_values = list(filter(lambda x: x is not None, [get_value_by_type(property_datatype, x.get('mainsnak').get('datavalue')) for x in filtered_values]))
             # we will store the new entity uids
             if property_datatype == 'wikibase-item' or property_datatype == 'wikibase-property':
