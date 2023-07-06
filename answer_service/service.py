@@ -18,7 +18,7 @@ config_file_path = 'answer_service/Config/Config.ini'
 config = read_config_file(config_file_path)
 
 # read the config vars
-prompt_template = config['GPT_METHOD']['prompt']
+prompt_template = config['GPT_METHOD']['prompt'].replace(r'\n', '\n')
 
 # Read service configuration
 config = read_config_file('App_config.ini')

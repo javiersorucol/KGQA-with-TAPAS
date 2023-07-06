@@ -49,12 +49,12 @@ def evaluate_dataset(dataset: dict):
     for subset in  question_types:
         print('Evaluating questions from the subset: ', subset)
         for question in dataset.get(subset):
-            en_question = next((x for x in question.get('question') if x.get('language') == 'en'), None).get('string')
+            en_question = next((x for x in question.get('question') if x.get('language') == 'en'), None)
             if en_question is None:
                 raise Exception('Question does not have an english translation: ' + str(question))
             
             res = query_api('post', linking_url + selected_endpoint, {}, {}, {
-                'text': en_question
+                'text': en_question.get('string')
             })
 
             if res.get('code') != 200:

@@ -55,3 +55,11 @@ The results of the experiment are:
 |    GPT v2   | /link/gpt/v2/  |  0.5057  |  0.6769  |  0.5789  |  0.5092  |  0.7263  |  0.5986  |
 |  Falcon 2.0  | /link/falcon/  |  0.3625  |  0.4462  |  0.4  |  0.3857  |  0.4263  |  0.405  |
 |  OpenTapioca  | /link/opentapioca/  |  0.4308  |  0.56  |  0.487  |  0.5658  |  0.4526  |  0.5029  |
+
+### Prompting experiment
+|  Prompt  |  subset  |  Precision (test set)  |  Recall (test set)  |  F1 score (test set)  |  Precision (train set)  |  Recall (train set)  |  F1 score (train set)  |
+|----------|----------|------------------------|---------------------|-----------------------|-------------------------|----------------------|------------------------|
+| prompt 1 |  singular  |  0.88  |  0.88  |  0.88  |  0.7087  |  0.8795  | 0.7849  |
+| prompt 1 |  boolean  |  0  |  0  |  0  |  0.8125  |  0.8125  | 0.8125  |
+| prompt 1 |  multiple  |  0.6048  |  0.4747  |  0.5319  |  0.8373  |  0.4572  | 0.5914  |
+| prompt 1 |  aggregaation  |  0  |  0  |  0  |  0.0380  |  0.3  | 0.0674  |

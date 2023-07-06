@@ -50,9 +50,9 @@ linking_service = dict(app_config.items('LINKING_SERVICE'))
 
 app = FastAPI()
 
-@app.post('/link/main')
+@app.post(linking_service.get('link_main_endpoint'))
 def link_data_main(question : Question_DTO):
-    # this endpoint performs the best selected linking method (gpt v1) and return only the main entity of the question, we perform this in the linking
+    # this endpoint performs the best selected linking method (gpt v1) and returns only the main entity of the question, we perform this in the linking
     # prompt in order to reduce the number of required prompts in the pipeline, the main_entity_prompt_template contains the chosen method prompt as one of
     # the instructions of the prompt, then it will only keep the main entity of the question
     global main_entity_prompt_template

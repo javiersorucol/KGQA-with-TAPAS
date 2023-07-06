@@ -35,9 +35,12 @@ def query_api(method:str, url:str, headers:dict, params:dict, payload, attempts:
         print('---------------------------------------------------------------------------------')
         print('Error with request, method: ', method, ', url: ', url)
         print('Error: ', str(e))
-        print('Received response: ', res.text)
+        print('Received response: ', res)
         print('---------------------------------------------------------------------------------')
-        return { 'code': res.status_code, 'json' : None, 'text': res.text }
+        if res is not None:
+            return { 'code': res.status_code, 'json' : None, 'text': res.text }
+        else:
+            return { 'code':500, 'json':None, 'text': str(e) }
     
 # Functions to query the app internal APIs
 
@@ -49,6 +52,25 @@ translation_service = dict(app_config.items('TRANSLATION_SERVICE'))
 linking_service = dict(app_config.items('LINKING_SERVICE'))
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
 answer_service = dict(app_config.items('ANSWER_SERVICE'))
+main_service = dict(app_config.items('MAIN_SERVICE'))
+
+def get_answer_gpt_method(question : str, lang : str = 'en'):
+    try:
+        global main_service
+
+        url = get_service_url(main_service, 'gpt_endpoint')
+        res = query_api('post', url, {}, {}, {
+            'text' : question,
+            'lang' : lang
+        })
+
+        return res
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying Main service: ' + str(e))
 
 def get_entity_triples(entity_UID : str):
     try:
@@ -140,7 +162,7 @@ def link_graph_elements(query:str):
 
         payload = { 'text' : query }
 
-        url = get_service_url(linking_service, 'link_endpoint_gpt_v1')
+        url = get_service_url(linking_service, 'link_main_endpoint')
         res = query_api('post', url, {}, {}, payload)
     
         return res

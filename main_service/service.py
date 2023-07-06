@@ -16,9 +16,14 @@ config = read_config_file(config_file_path)
 
 supported_languges = config.get('LANGUAGES', 'supported_languges').split()
 
+# Reding the app configurations to get the service configuration
+app_config_file_path = 'App_config.ini'
+app_config = read_config_file(app_config_file_path)
+main_service = dict(app_config.items('MAIN_SERVICE'))
+
 app = FastAPI()
 
-@app.post('/question/gpt/')
+@app.post(main_service.get('gpt_endpoint'))
 def ask_Wikidata_with_gpt(question: QUERY_DTO):
    try:
       # Process the question to obtain linked elements (tranlation and linking service are involved)
@@ -46,7 +51,8 @@ def ask_Wikidata_with_gpt(question: QUERY_DTO):
             raise HTTPException(status_code=502, detail='Error connecting with Answer service: ' + res.get('text')) 
          
          print('answer: ', res.get('json'))
-         answers[key] = res.get('json')
+         answers['answer'] = res.get('json')
+         break
       
       return answers
 
@@ -56,7 +62,7 @@ def ask_Wikidata_with_gpt(question: QUERY_DTO):
       raise HTTPException(status_code=500, detail='Unexpected error on main server while attending the query: ' + str(e))
    
 
-@app.post('/question/tapas/')
+@app.post(main_service.get('tapas_endpoint'))
 def ask_Wikidata_with_TAPAS(question: QUERY_DTO):
    try:
       # Process the question to obtain linked elements (tranlation and linking service are involved)

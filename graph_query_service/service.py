@@ -13,6 +13,7 @@ from utils.Json_utils import read_json, save_json
 import copy
 from pathlib import Path
 from rdflib import Graph, Literal, URIRef, BNode, RDF, RDFS
+import re
 
 config_file_path = 'graph_query_service/Config/Config.ini'
 
@@ -276,6 +277,10 @@ def get_label(uid, prefix : str='wd'):
         global labels_map
         global entity_prefix
 
+        # check if it's a valid UID, if not return uid
+        if not re.match(r'^(Q|P)\d+$', uid):
+            return uid
+
         # Check if the label is in the list of elements with no label, if it does, return the URI
         if uid in labels_map.get('no_label_elements'):
             return entity_prefix + uid
@@ -290,7 +295,8 @@ def get_label(uid, prefix : str='wd'):
             'uid' : uid
         })
         if res.get('code') != 200:
-            raise HTTPException(status_code=502, detail='Wikiata returned an error while obtaining the label for the uid: '+ uid +'. Error: ' + str(e))
+            print('Wikiata returned an error while obtaining the label for the uid: '+ uid +'. Error: ' + res.get('text'))
+            raise HTTPException(status_code=502, detail='Wikiata returned an error while obtaining the label for the uid: '+ uid +'. Error: ' + res.get('text'))
         
         # if the result is empty, we will add this uid to the no labels list and return the uri
         label = ''
@@ -309,11 +315,12 @@ def get_label(uid, prefix : str='wd'):
         raise e
     
     except Exception as e:
+        print('Unexpected error while obtaining the label for the uid: '+ uid +'. Error: ' + str(e))
         raise HTTPException(status_code=500, detail='Unexpected error while obtaining the label for the uid: '+ uid +'. Error: ' + str(e))
 
 def list_to_str(list : List):
-    # join list elements using ', ' e.g. for [1,2,3] returns '1, 2, 3'
-    return ', '.join([ x if x is not None else 'unknown value' for x in list])
+    # join list elements using '; ' e.g. for [1,2,3] returns '1; 2; 3'
+    return '; '.join([ x if x is not None else 'unknown value' for x in list])
 
 def get_entity_data(entity_UID : str):
     # query wikidata to get an entity information
@@ -346,7 +353,7 @@ def get_value_by_type(data_type: str, value: dict, prefix:bool=True):
                 prefix = entity_prefix if prefix else ''
                 return prefix + value.get('value').get('id')
             elif data_type == 'time':
-                return value.get('value').get('time')
+                return value.get('value').get('time')[0:11]
             elif data_type == 'monolingualtext':
                 return value.get('value').get('text')
             elif data_type == 'quantity':
