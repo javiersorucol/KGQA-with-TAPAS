@@ -57,9 +57,9 @@ The results of the experiment are:
 |  OpenTapioca  | /link/opentapioca/  |  0.4308  |  0.56  |  0.487  |  0.5658  |  0.4526  |  0.5029  |
 
 ### Prompting experiment
-|  Prompt  |  subset  |  Precision (test set)  |  Recall (test set)  |  F1 score (test set)  |  Precision (train set)  |  Recall (train set)  |  F1 score (train set)  |
-|----------|----------|------------------------|---------------------|-----------------------|-------------------------|----------------------|------------------------|
-| prompt 1 |  singular  |  0.88  |  0.88  |  0.88  |  0.7087  |  0.8795  | 0.7849  |
-| prompt 1 |  boolean  |  0  |  0  |  0  |  0.8125  |  0.8125  | 0.8125  |
-| prompt 1 |  multiple  |  0.6048  |  0.4747  |  0.5319  |  0.8373  |  0.4572  | 0.5914  |
-| prompt 1 |  aggregaation  |  0  |  0  |  0  |  0.0380  |  0.3  | 0.0674  |
+|  Prompt  |   subset       |  Precision  |  Recall  |  F1 score  |  Correct answers  |  Wrong answers  |
+|----------|----------------|-------------|----------|------------|-------------------|-----------------|
+| prompt 1 |  singular      |  0.7222     |  0.8273  |  0.7712    |  75               |  31             |
+| prompt 1 |  multiple      |  0.7674     |  0.0345  |  0.0660    |  34               |  32             |
+| prompt 1 |  boolean       |  0.7647     |  0.5909  |  0.6667    |  13               |  9              |
+| prompt 1 |  aggregaation  |  0.0962     |  0.3846  |  0.1538    |  4                |  9              |

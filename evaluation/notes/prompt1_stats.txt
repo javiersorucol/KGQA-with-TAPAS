@@ -1,0 +1,98 @@
+PROMPT 1
+Answer the following question using only the knowledge expressed in the following triples.\nThe answer must follow the following format: The answer of your question is: &answers\nIn case of a closed question, replace &answers only with yes or no\nIn case the answer is not provided in the given triples, please answer with: Answer not found\nIn case the question asks to perform an aggregation operation (count, sum, average), select the found elements that answers the question and perform the operation over them, replace &answers with the result of the operation.\nIn any other case the value &answers must be replaced with the found elements that answer the question separated by semicolon.\ntriples:\n${triples}\nQuestion:${question}\nAnswer:
+
+STATS:
+######
+# NEW results prompt 1
+
+
+### TEST
+
+## AGREGATION
+# correct answers:  0
+# incorrect answers:  2
+# correct answers percentage 0%
+# TP:  1
+# FP:  11
+# FN:  1
+# Precision:  0.08333333333333333
+# Recall:  0.5
+# F1:  0.14285714285714285
+
+## BOOLEAN
+# correct answers:  1
+# incorrect answers:  0
+# correct answers percentage 100%
+# TP:  1
+# FP:  0
+# FN:  0
+# Precision:  1.0
+# Recall:  1.0
+# F1:  1.0
+
+## SINGULAR
+# correct answers:  20
+# incorrect answers:  10
+# percentge of correct answers: 0.67
+# TP:  22
+# FP:  6
+# FN:  8
+# Precision:  0.7857142857142857
+# Recall:  0.7333333333333333
+# F1:  0.7586206896551724
+
+## MULTIPLE
+# correct answers:  11
+# incorrect answers:  11
+# correct answers percentage 50%
+# TP:  75
+# FP:  46
+# FN:  406
+# Precision:  0.6198347107438017
+# Recall:  0.15592515592515593
+# F1:  0.24916943521594684
+
+
+### TRAIN
+
+## BOOLEAN
+# correct answers:  12
+# incorrect answers:  9
+# correct answers percentage 50%
+# TP:  12
+# FP:  4
+# FN:  9
+# Precision:  0.75
+# Recall:  0.5714285714285714
+# F1:  0.6486486486486487
+
+## AGGREGATION
+# correct answers:  4
+# incorrect answers:  7
+# TP:  4
+# FP:  36
+# FN:  7
+# Precision:  0.1
+# Recall:  0.36363636363636365
+# F1:  0.1568627450980392
+
+## SINGULAR
+# correct answers:  55
+# incorrect answers:  21
+# TP:  69
+# FP:  29
+# FN:  11
+# Precision:  0.7040816326530612
+# Recall:  0.8625
+# F1:  0.7752808988764045
+## MULTIPLE
+# correct answers:  23
+# incorrect answers:  21
+# TP:  156
+# FP:  24
+# FN:  6058
+# Precision:  0.8666666666666667
+# Recall:  0.02510460251046025
+# F1:  0.048795746011886146
+
+########

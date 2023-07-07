@@ -23,12 +23,15 @@ main_service_url = 'http://' + main_service.get('ip') + ':' + main_service.get('
 
 main_service_gpt_endpoint = main_service.get('gpt_endpoint')
 
-selected_subset = 'aggregation'
+selected_subset = 'multiple'
 entity_prefix = 'http://www.wikidata.org/entity/'
 
 # We will only evaluate over 'Simple' questions, we define simple question as questions where only one triple is required to get the answer
 test_subset = read_json('evaluation/datasets/test_subsets.json').get('simple')
 train_subset = read_json('evaluation/datasets/train_subsets.json').get('simple')
+
+ignore_questions_test = [56, 136, 132, 182]
+ignore_questions_train = [115, 1, 3, 392]
 
 example_question = {
                 "id": "128",
@@ -63,10 +66,13 @@ example_question = {
                 ]
             }
 
-def evaluate_dataset(dataset: dict, selected_subset : str=selected_subset):
-    TP = FP = FN = 0
+def evaluate_dataset(dataset: dict, selected_subset : str=selected_subset, ignored_list=[]):
+    TP = FP = FN = correct = incorrect = 0
     for question in dataset.get(selected_subset):
-        TP, FN, FP = evaluate_question(question=question, TP=TP, FN=FN, FP=FP)
+        if int(question.get('id')) not in ignored_list:
+            TP, FN, FP, correct, incorrect = evaluate_question(question=question, TP=TP, FN=FN, FP=FP, correct=correct, incorrect=incorrect)
+    print('correct answers: ', correct)
+    print('incorrect answers: ', incorrect)
     print('TP: ', TP)
     print('FP: ', FP)
     print('FN: ', FN)
@@ -77,27 +83,38 @@ def evaluate_dataset(dataset: dict, selected_subset : str=selected_subset):
     f1 = get_f1(TP=TP, FP=FP, FN=FN)
     print('F1: ', f1)
 
-def evaluate_question(question: dict, TP, FN, FP):
+def evaluate_question(question: dict, TP, FN, FP, correct, incorrect):
+    print('Evaluation of question: ', question.get('id'))
     global entity_prefix
     en_question = next((x for x in question.get('question') if x.get('language') == 'en'), None).get('string')
+    good = True
     if en_question is None:
+        # questions with no english translation are not taken into account
         print('Question does not have an english translation')
-        return TP, FN, FP
+        return TP, FN, FP, correct, incorrect
     
     res = get_answer_gpt_method(question=en_question)
+    
+    actual_answers = []
 
     if res.get('code') != 200:
-        print ('Main service answered with an error. Code: ' + str(res))
-        actual_answers = []
+        # if main srvice fails the query (usually by tokens, dont take it into acccount)
+        print('Error in question: ', question.get('id'))
+        print ('Main service answered with an error. Code: ' + str(res),)
+        return TP, FN, FP, correct, incorrect
     
-    if res.get('json').get('answer') is None:
-        actual_answers = []
+    elif res.get('json').get('answer') is None:
+        print('Error key answer not found for question: ', question.get('id'))
+        good = False
+
+    else:
+        res = res.get('json').get('answer')
+
+        if 'Answer not found' not in res:
+            actual_answers = [x.strip() for x in res.replace('The answer of your question is: ','').rstrip('.').split(';')]
+        else:
+            good = False
     
-    res = res.get('json').get('answer')
-    actual_answers = []
-    if 'Answer not found' in res:
-        actual_answers = []
-    actual_answers = [x.strip() for x in res.replace('The answer of your question is: ','').rstrip('.').split(';')]
     #print(actual_answer)
     expected_answers = []
 
@@ -113,6 +130,7 @@ def evaluate_question(question: dict, TP, FN, FP):
                 if value.get('type') == 'uri':
                     label = value.get('value')
                     if entity_prefix in label:
+                        print('Searching label for: ', label)
                         label = get_label(label.replace(entity_prefix,''))
                     expected_answers.append(label.lower())
                 elif value.get('type') == 'literal':
@@ -122,10 +140,15 @@ def evaluate_question(question: dict, TP, FN, FP):
                     else:
                         expected_answers.append(value.get('value').lower())
                 
-    TP, FN, FP = qualify_result(expected_answers=expected_answers, actual_answers=actual_answers, TP=TP, FN=FN, FP=FP)
-    return TP, FN, FP
+    TP, FN, FP, good = qualify_result(expected_answers=expected_answers, actual_answers=actual_answers, TP=TP, FN=FN, FP=FP, good=good)
+    if good:
+        correct = correct + 1
+    else:
+        incorrect = incorrect + 1
 
-def qualify_result(expected_answers, actual_answers, TP, FN, FP):
+    return TP, FN, FP, correct, incorrect
+
+def qualify_result(expected_answers, actual_answers, TP, FN, FP, good):
     def compare_element_array(el, arr):
         for x in arr:
             if el.lower() in x.lower() or x.lower() in el.lower():
@@ -138,85 +161,23 @@ def qualify_result(expected_answers, actual_answers, TP, FN, FP):
         else:
             print('Actual answer: ', actual_answer)
             print('Not found in expected answers: ', expected_answers)
+            good = False
             FP = FP + 1
     
     for expected_answer in expected_answers:
         if not compare_element_array(expected_answer, actual_answers):
             print('Expected answer: ', expected_answer)
             print('Not found in actual answers: ', actual_answers)
+            good = False
             FN = FN + 1
 
-    return TP, FN, FP
+    return TP, FN, FP, good
 
 # print(evaluate_question(example_question,0,0,0))
 print('Evaluationg subset: ', selected_subset)
 # print('Evaluation subset of the testing dataset...')
-# evaluate_dataset(test_subset)
+# evaluate_dataset(test_subset, ignored_list=ignore_questions_test)
 print('Evaluation subset of the training dataset...')
-evaluate_dataset(train_subset)
-###################################
-# singular subset
-##
-# testing
-# TP:  22
-# FP:  3
-# FN: 3
-# Precision:  0.88
-# Recall:  0.88
-# F1:  0.88
-## training
-# TP:  73
-# FP:  30
-# FN:  10
-# Precision:  0.7087378640776699
-# Recall:  0.8795180722891566
-# F1:  0.7849462365591398
-######################################################
-# boolean subset
-##
-## testing
-# TP:  0
-# FP:  1
-# FN:  1
-# Precision:  0.0
-# Recall:  0.0
-# F1:  0.0
-## training
-# TP:  13
-# FP:  3
-# FN:  3
-# Precision:  0.8125
-# Recall:  0.8125
-# F1:  0.8125
-########################################################
-# multiple subset
-## testing
-# TP:  75
-# FP:  49
-# FN:  83
-# Precision:  0.6048387096774194
-# Recall:  0.47468354430379744
-# F1:  0.5319148936170213
-## training
-# TP:  139
-# FP:  27
-# FN:  165
-# Precision:  0.8373493975903614
-# Recall:  0.45723684210526316
-# F1:  0.5914893617021276
-########################################################
-# aggregation subset
-## testing
-# TP:  0
-# FP:  7
-# FN:  1
-# Precision:  0.0
-# Recall:  0.0
-# F1:  0.0
-## training
-# TP:  3
-# FP:  76
-# FN:  7
-# Precision:  0.0379746835443038
-# Recall:  0.3
-# F1:  0.06741573033707865
+evaluate_dataset(train_subset,ignored_list=ignore_questions_train)
+
+
