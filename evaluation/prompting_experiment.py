@@ -22,8 +22,8 @@ main_service_url = 'http://' + main_service.get('ip') + ':' + main_service.get('
 
 main_service_gpt_endpoint = main_service.get('gpt_endpoint')
 
-prompt_id = 'prompt_1_gpt_operations'
-prompt = 'Answer the following question using only the knowledge expressed in the following triples.\nThe answer must follow the following format: The answer of your question is: &answers\nIn case of a closed question, replace &answers only with yes or no\nIn case the answer is not provided in the given triples, please answer with: Answer not found\nIn case the question asks to perform an aggregation operation (count, sum, average), select the found elements that answers the question and perform the operation over them, replace &answers with the result of the operation.\nIn any other case the value &answers must be replaced with the found elements that answer the question separated by semicolon.\ntriples:\n${triples}\nQuestion:${question}\nAnswer:'
+prompt_id = 'prompt_2_manual_operations'
+prompt = 'Answer the following question using only the knowledge expressed in the following triples.\nThe answer must follow the following format: The answer of your question is: &answers\nIn case of a closed question, replace &answers only with yes or no\nIn case the answer is not provided in the given triples, please answer with: Answer not found\nIn case the question asks to perform an aggregation operation (count, sum, average), select the found elements that answers the question, replace &answers with the element found splited by semicolon add a prefix depending on the operation (COUNT > for count operation, SUM > for sum operation a and AVG > for average operation).\nIn any other case the value &answers must be replaced with the found elements that answer the question separated by semicolon.\ntriples:\n${triples}\nQuestion:${question}\nAnswer:'
 entity_prefix = 'http://www.wikidata.org/entity/'
 
 # We will only evaluate over 'Simple' questions, we define simple question as questions where only one triple is required to get the answer
@@ -99,19 +99,7 @@ def evaluate_dataset(dataset: dict, selected_subset : str, ignored_list=[]):
     except Exception as e:
         print('Unexpected error: ' + str(e))
         return results
-    
-    
-    # print('correct answers: ', correct)
-    # print('incorrect answers: ', incorrect)
-    # print('TP: ', TP)
-    # print('FP: ', FP)
-    # print('FN: ', FN)
-    # precision = get_precision(TP=TP, FP=FP)
-    # print('Precision: ', precision)
-    # recall = get_recall(TP=TP, FN=FN)
-    # print('Recall: ', recall)
-    # f1 = get_f1(TP=TP, FP=FP, FN=FN)
-    # print('F1: ', f1)
+
 
 def evaluate_question(question: dict, TP=0, FN=0, FP=0):
     print('Evaluation of question: ', question.get('id'))

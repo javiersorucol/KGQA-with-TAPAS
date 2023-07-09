@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
 
-from utils.Request_utils import translate, link_graph_elements , ask_tapas, get_entity_table, get_entity_triples, ask_gpt
+from utils.Request_utils import translate, link_graph_elements , ask_tapas, get_entity_table, get_entity_triples, ask_gpt_v1, ask_gpt_v2
 
 from DTOs.main_DTOs import QUERY_DTO
 
@@ -46,7 +46,8 @@ def ask_Wikidata_with_gpt(question: QUERY_DTO):
       answers = {}
       for key,triples in entity_triples.items():
          print('entity: ', key)
-         res = ask_gpt(triples=triples.get('triples'), question=question.text)
+         res = ask_gpt_v2(triples=triples.get('triples'), question=question.text)
+         # res = ask_gpt_v1(triples=triples.get('triples'), question=question.text)
          if res.get('code') != 200:
             raise HTTPException(status_code=502, detail='Error connecting with Answer service: ' + res.get('text')) 
          

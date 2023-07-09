@@ -102,11 +102,26 @@ def get_entity_table(entity_UID : str):
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while querying Graph Query service for the entity table: ' + str(e))
 
-def ask_gpt(triples : str, question : str):
+def ask_gpt_v1(triples : str, question : str):
     try:
         global answer_service
 
-        url = get_service_url(answer_service, 'ask_gpt_endpoint')
+        url = get_service_url(answer_service, 'ask_gpt_endpoint_v1')
+        res = query_api('post', url, {}, {}, { 'triples' : triples, 'question' : question })
+
+        return res
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying answer service for gpt answer: ' + str(e))
+
+def ask_gpt_v2(triples : str, question : str):
+    try:
+        global answer_service
+
+        url = get_service_url(answer_service, 'ask_gpt_endpoint_v2')
         res = query_api('post', url, {}, {}, { 'triples' : triples, 'question' : question })
 
         return res
