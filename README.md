@@ -59,12 +59,12 @@ The results of the experiment are:
 ### Prompting experiment
 |  Prompt  |   subset       |  Precision  |  Recall  |  F1 score  |  Correct answers(%) | 
 |----------|----------------|-------------|----------|------------|---------------------|
-| prompt 1 |  singular      |  0.8064     |  0.8064  |  0.8064    |  75.00%             |
-| prompt 1 |  multiple      |  0.8021     |  0.0346  |  0.0664    |  50.75%             |
+| prompt 1 |  singular      |  0.7891     |  0.8080  |  0.7984    |  74.38%             |
+| prompt 1 |  multiple      |  0.8028     |  0.0346  |  0.0664    |  50.75%             |
 | prompt 1 |  boolean       |  0.7647     |  0.5909  |  0.6667    |  59.09%             |
 | prompt 1 |  aggregaation  |  0.0600     |  0.2142  |  0.0938    |  21.43%             |
 |----------|----------------|-------------|----------|------------|---------------------|
 | prompt 2 |  singular      |  0.7966     |  0.7768  |  0.7866    |  75.21%             |
 | prompt 2 |  multiple      |  0.7986     |  0.0340  |  0.0653    |  46.97%             |
-| prompt 2 |  boolean       |  1.0000     |  0.7143  |  0.8333    |  71.43%             |
+| prompt 2 |  boolean       |  1.0000     |  0.7273  |  0.8421    |  72.73%             |
 | prompt 2 |  aggregaation  |  0.2273     |  0.3571  |  0.2778    |  35.71%             |

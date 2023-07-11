@@ -59,14 +59,18 @@
                 ]
             },
             "193": {
-                "TP": 0,
+                "TP": 1,
                 "FN": 0,
                 "FP": 0,
-                "correct": false,
-                "notes": "Main service returned an error code: {'code': 502, 'json': {'detail': 'Error retieving the entity triples from the graph query service.{\"detail\":\"Wikidata External API error. Code 500 : (\\'Connection aborted.\\', ConnectionResetError(10054, \\'An existing connection was forcibly closed by the remote host\\', None, 10054, None))\"}'}, 'text': '{\"detail\":\"Error retieving the entity triples from the graph query service.{\\\\\"detail\\\\\":\\\\\"Wikidata External API error. Code 500 : (\\'Connection aborted.\\', ConnectionResetError(10054, \\'An existing connection was forcibly closed by the remote host\\', None, 10054, None))\\\\\"}\"}'}",
-                "error": true,
-                "actual_answers": [],
-                "expected_answers": []
+                "correct": true,
+                "notes": "None",
+                "error": false,
+                "actual_answers": [
+                    "No"
+                ],
+                "expected_answers": [
+                    "no"
+                ]
             },
             "211": {
                 "TP": 1,

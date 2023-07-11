@@ -193,5 +193,3 @@ def qualify_result(expected_answers, actual_answers, TP, FN, FP, correct):
 
 # print(evaluate_question(example_question,0,0,0))
 evaluate()
-
-

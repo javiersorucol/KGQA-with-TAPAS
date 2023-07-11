@@ -1197,14 +1197,21 @@
                 ]
             },
             "254": {
-                "TP": 0,
+                "TP": 1,
                 "FN": 0,
-                "FP": 0,
+                "FP": 3,
                 "correct": false,
-                "notes": "Main service returned an error code: {'code': 502, 'json': {'detail': 'Error connecting with Answer service: {\"detail\":\"OpenAI API error The server is overloaded or not ready yet.\"}'}, 'text': '{\"detail\":\"Error connecting with Answer service: {\\\\\"detail\\\\\":\\\\\"OpenAI API error The server is overloaded or not ready yet.\\\\\"}\"}'}",
-                "error": true,
-                "actual_answers": [],
-                "expected_answers": []
+                "notes": "None",
+                "error": false,
+                "actual_answers": [
+                    "Mary Todd Lincoln",
+                    "Mary Ann Lincoln",
+                    "Mary Ann Todd",
+                    "Mary Ann Todd Lincoln"
+                ],
+                "expected_answers": [
+                    "mary todd lincoln"
+                ]
             },
             "255": {
                 "TP": 0,
