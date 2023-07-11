@@ -30,8 +30,8 @@ entity_prefix = 'http://www.wikidata.org/entity/'
 test_subset = read_json('evaluation/datasets/test_subsets.json').get('simple')
 train_subset = read_json('evaluation/datasets/train_subsets.json').get('simple')
 
-ignore_questions_test = [56, 136, 132, 182]
-ignore_questions_train = [115, 1, 3, 392]
+ignore_questions_test = [56, 136, 132, 182,68,24]
+ignore_questions_train = [115, 1, 3, 392,327,78]
 
 example_question = {
                 "id": "128",

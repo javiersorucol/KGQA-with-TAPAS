@@ -41,8 +41,30 @@ def ask_tapas(table_DTO : Table_DTO):
       table = table.astype(str)
 
       answer= tqa(table=table, query=table_DTO.question)
-      
-      return {'answer' : answer.get('answer')}
+      answer = answer.get('answer')
+      print(answer)
+      print('------------------------------------------------------')
+
+      if 'COUNT >' in answer:
+         res = re.findall(r'COUNT >.*', answer)
+         if len(res) > 0:
+            answer = str(len(res[0].replace('COUNT >','').split(';')))
+      elif 'SUM >' in answer:
+         res = re.findall(r'SUM >.*', answer)
+         if len(res) > 0:
+            try:
+               answer = str(sum([ int(x) for x in (res[0].replace('SUM >','').split(';')) ]))
+            except:
+               return 'The answer of your question is: ' + answer
+      elif 'AVG >' in answer:
+         res = re.findall(r'AVG >.*', answer)
+         if len(res) > 0:
+            try:
+               answer = str(mean([ int(x) for x in (res[0].replace('AVG >','').split(';')) ]))
+            except:
+               return 'The answer of your question is: ' + answer     
+
+      return 'The answer of your question is: ' + answer
    
    except HTTPException as e:
       raise e

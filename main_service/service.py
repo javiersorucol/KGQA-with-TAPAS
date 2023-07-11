@@ -91,7 +91,9 @@ def ask_Wikidata_with_TAPAS(question: QUERY_DTO):
             raise HTTPException(status_code=502, detail='Error connecting with Answer service: ' + res.get('text')) 
          
          print('answer: ', res.get('json'))
-         answers[key] = res.get('json')
+         answers['answer'] = res.get('json')
+         break
+      
       return answers
    
    except HTTPException as e:
