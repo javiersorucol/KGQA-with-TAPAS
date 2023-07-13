@@ -54,6 +54,24 @@ graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
 answer_service = dict(app_config.items('ANSWER_SERVICE'))
 main_service = dict(app_config.items('MAIN_SERVICE'))
 
+def get_answer_tapas_method(question : str, lang : str = 'en'):
+    try:
+        global main_service
+
+        url = get_service_url(main_service, 'tapas_endpoint')
+        res = query_api('post', url, {}, {}, {
+            'text' : question,
+            'lang' : lang
+        })
+
+        return res
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying Main service: ' + str(e))
+
 def get_answer_gpt_method(question : str, lang : str = 'en'):
     try:
         global main_service

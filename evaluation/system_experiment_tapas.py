@@ -1,19 +1,20 @@
 # Before running this script make sure to run the main, linking, graph query and answer ser
 import sys
 import os
+import json
   
 current = os.path.dirname(os.path.realpath(__file__))
 parent_directory = os.path.dirname(current)
   
 sys.path.append(parent_directory)
 
-from utils.Request_utils import get_answer_gpt_method
+from utils.Request_utils import get_answer_tapas_method
 from utils.Configuration_utils import read_config_file
 from utils.Json_utils import read_json, save_json
 from graph_query_service.service import get_label
 
-prompt_id = 'prompt_2_manual_operations'
-prompt = 'Answer the following question using only the knowledge expressed in the following triples.\nThe answer must follow the following format: The answer of your question is: &answers\nIn case of a closed question, replace &answers only with yes or no\nIn case the answer is not provided in the given triples, please answer with: Answer not found\nIn case the question asks to perform an aggregation operation (count, sum, average), select the found elements that answers the question, replace &answers with the element found splited by semicolon add a prefix depending on the operation (COUNT > for count operation, SUM > for sum operation a and AVG > for average operation).\nIn any other case the value &answers must be replaced with the found elements that answer the question separated by semicolon.\ntriples:\n${triples}\nQuestion:${question}\nAnswer:'
+system='TAPAS KGQA'
+system_id='TAPAS_KGQA'
 entity_prefix = 'http://www.wikidata.org/entity/'
 
 # We will only evaluate over 'Simple' questions, we define simple question as questions where only one triple is required to get the answer
@@ -23,15 +24,51 @@ train_subset = read_json('evaluation/datasets/train_subsets.json').get('simple')
 ignore_questions_test = [56, 136, 132, 182,68,24]
 ignore_questions_train = [115, 1, 3, 392,327,78]
 
-def evaluate(prompt_id=prompt_id, prompt=prompt):
-    subsets = ['boolean','aggregation','singular','multiple']
-    results = {
-        'prompt': prompt
-    }
-    for subset in subsets:
-        results[subset] = evaluate_subset(subset)
-    
-    save_json('evaluation/results/'+prompt_id+'_results.json', results)
+example_question = {
+                "id": "128",
+                "question": [
+                    {
+                        "language": "en",
+                        "string": "In what year did Paraguay proclaim its independence?"
+                    }
+                ],
+                "query": {
+                    "sparql": " SELECT ?o1 WHERE { <http://www.wikidata.org/entity/Q359>  <http://www.wikidata.org/prop/direct/P50>  ?o1 .  }"
+                },
+                "answers": [
+                    {
+                        "head": {
+                            "vars": [
+                                "o1"
+                            ]
+                        },
+                        "results": {
+                            "bindings": [
+                                {
+                                    "o1": {
+                                        "datatype": "http://www.w3.org/2001/XMLSchema#dateTime",
+                                        "type": "literal",
+                                        "value": "1811-01-01T00:00:00Z"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+
+def evaluate(system_id=system_id, system=system):
+    try:
+        subsets = ['boolean','aggregation','singular','multiple']
+        results = {
+            'system': system
+        }
+        for subset in subsets:
+            results[subset] = evaluate_subset(subset)
+        
+        save_json('evaluation/results/'+system_id+'_results.json', results)
+    except Exception as e:
+        print('Unkown error: ', str(e))
 
 def evaluate_subset(selected_subset:str):
     global test_subset
@@ -57,7 +94,6 @@ def evaluate_dataset(dataset: dict, selected_subset : str, ignored_list=[]):
         print('Unexpected error: ' + str(e))
         return results
 
-
 def evaluate_question(question: dict, TP=0, FN=0, FP=0):
     print('Evaluation of question: ', question.get('id'))
     global entity_prefix
@@ -69,7 +105,7 @@ def evaluate_question(question: dict, TP=0, FN=0, FP=0):
         print('Question does not have an english translation')
         return {'TP': TP, 'FN': FN, 'FP': FP, 'correct': False, 'notes':'No english translation', 'error':True, 'actual_answers': [], 'expected_answers' : []}
     
-    res = get_answer_gpt_method(question=en_question)
+    res = get_answer_tapas_method(question=en_question)
     
     actual_answers = []
 
@@ -94,7 +130,6 @@ def evaluate_question(question: dict, TP=0, FN=0, FP=0):
             notes = 'Answer not found'
             correct = False
     
-    #print(actual_answer)
     expected_answers = []
 
     if question.get('answers')[0].get('boolean') is not None:
@@ -121,7 +156,7 @@ def evaluate_question(question: dict, TP=0, FN=0, FP=0):
                 
     TP, FN, FP, correct = qualify_result(expected_answers=expected_answers, actual_answers=actual_answers, TP=TP, FN=FN, FP=FP, correct=correct)
 
-    return {'TP': TP, 'FN': FN, 'FP': FP, 'correct': correct, 'notes': notes, 'error':False, 'actual_answers': actual_answers, 'expected_answers' : expected_answers}
+    return {'TP': TP, 'FN': FN, 'FP': FP, 'correct': correct, 'notes': str(notes), 'error':False, 'actual_answers': json.dumps(list(actual_answers)), 'expected_answers' : list(expected_answers)}
 
 def qualify_result(expected_answers, actual_answers, TP, FN, FP, correct):
     def compare_element_array(el, arr):
@@ -148,5 +183,4 @@ def qualify_result(expected_answers, actual_answers, TP, FN, FP, correct):
 
     return TP, FN, FP, correct
 
-# print(evaluate_question(example_question,0,0,0))
 evaluate()

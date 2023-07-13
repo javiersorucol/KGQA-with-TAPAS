@@ -44,6 +44,8 @@ def ask_tapas(table_DTO : Table_DTO):
       answer = answer.get('answer')
       print(answer)
       print('------------------------------------------------------')
+      if answer == '':
+         return 'Answer not found'
 
       if 'COUNT >' in answer:
          res = re.findall(r'COUNT >.*', answer)
@@ -55,14 +57,15 @@ def ask_tapas(table_DTO : Table_DTO):
             try:
                answer = str(sum([ int(x) for x in (res[0].replace('SUM >','').split(';')) ]))
             except:
-               return 'The answer of your question is: ' + answer
-      elif 'AVG >' in answer:
-         res = re.findall(r'AVG >.*', answer)
+               return 'The answer of your question is: ' + answer.replace('SUM >','')
+      elif 'AVERAGE >' in answer:
+         print(1)
+         res = re.findall(r'AVERAGE >.*', answer)
          if len(res) > 0:
             try:
-               answer = str(mean([ int(x) for x in (res[0].replace('AVG >','').split(';')) ]))
+               answer = str(mean([ int(x) for x in (res[0].replace('AVERAGE >','').split(';')) ]))
             except:
-               return 'The answer of your question is: ' + answer     
+               return 'The answer of your question is: ' + answer.replace('AVERAGE >','')   
 
       return 'The answer of your question is: ' + answer
    
@@ -106,14 +109,14 @@ def ask_gpt_v2(triples_DTO : Triples_DTO):
             try:
                answer = 'The answer of your question is: ' + str(sum([ int(x) for x in (res[0].replace('SUM >','').split(';')) ]))
             except:
-               return answer
+               return answer.replace('SUM >','')
       elif 'AVG >' in answer:
          res = re.findall(r'AVG >.*', answer)
          if len(res) > 0:
             try:
                answer = 'The answer of your question is: ' + str(mean([ int(x) for x in (res[0].replace('AVG >','').split(';')) ]))
             except:
-               return answer      
+               return answer.replace('AVG >','')     
 
       return answer
 

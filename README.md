@@ -68,3 +68,16 @@ The results of the experiment are:
 | prompt 2 |  multiple      |  0.7986     |  0.0340  |  0.0653    |  46.97%             |
 | prompt 2 |  boolean       |  1.0000     |  0.7273  |  0.8421    |  72.73%             |
 | prompt 2 |  aggregaation  |  0.2273     |  0.3571  |  0.2778    |  35.71%             |
+
+### Systems experiment
+|  System  |   subset       |  Precision  |  Recall  |  F1 score  |  Correct answers(%) | 
+|----------|----------------|-------------|----------|------------|---------------------|
+| GPT KGQA |  singular      |  0.7966     |  0.7768  |  0.7866    |  75.21%             |
+| GPT KGQA |  multiple      |  0.7986     |  0.0340  |  0.0653    |  46.97%             |
+| GPT KGQA |  boolean       |  1.0000     |  0.7273  |  0.8421    |  72.73%             |
+| GPT KGQA |  aggregaation  |  0.2273     |  0.3571  |  0.2778    |  35.71%             |
+|----------|----------------|-------------|----------|------------|---------------------|
+| TAPAS KGQA |  singular      |  0.3529     |  0.4500  |  0.3956    |  44.17%             |
+| TAPAS KGQA |  multiple      |  0.4124     |  0.0060  |  0.0118    |  14.93%             |
+| TAPAS KGQA |  boolean       |  0.0000     |  0.0000  |  0.0000    |  00.00%             |
+| TAPAS KGQA |  aggregaation  |  0.4286     |  0.4286  |  0.4286    |  42.86%             |
