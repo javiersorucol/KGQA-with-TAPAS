@@ -12,7 +12,6 @@ from utils.Request_utils import query_api
 from utils.OpenAI_utils import query_open_ai
 
 from pathlib import Path
-import re
 import json
 
 config_file_path = 'linking_service/Config/Config.ini'
@@ -62,36 +61,50 @@ def link_data_main(question : Question_DTO):
 
 @app.post(linking_service.get('link_endpoint_gpt_v1'))
 def link_data_with_OpenAI(question : Question_DTO, prompt_template : str = ner_prompt_template):
-    # extract the entity candidates label using OpenAI GPT
-    labels = [label.strip() for label in query_open_ai(prompt_template, {'question': question.text}).split(',')]
-    print('GPT found named entities: ', labels)
+    try:
+        # extract the entity candidates label using OpenAI GPT
+        labels = [label.strip() for label in query_open_ai(prompt_template, {'question': question.text}).split(',')]
+        print('GPT found named entities: ', labels)
 
-    result = {'entities': []}
+        result = Linked_data_DTO(entities = [])
+        
+        # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
+        for label in labels:
+            search_result = search_entity_with_wikidata_service(label)
+            if search_result is not None:
+                result.entities.append(search_result)
+        
+        return result
     
-    # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
-    for label in labels:
-        search_result = search_entity_with_wikidata_service(label)
-        if search_result is not None:
-            result['entities'].append(search_result)
-    
-    return result
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error on server while working with GPT v1 method. Error:' + str(e))
 
 @app.post(linking_service.get('link_endpoint_gpt_v2'))
 def link_data_with_OpenAI_v2(question : Question_DTO, prompt_template : str = ner_prompt_template):
-    # extract the entity candidates label using OpenAI GPT
-    labels = [label.strip() for label in query_open_ai(prompt_template, {'question': question.text}).split(',')]
-    print('GPT found named entities: ', labels)
+    try:
+        # extract the entity candidates label using OpenAI GPT
+        labels = [label.strip() for label in query_open_ai(prompt_template, {'question': question.text}).split(',')]
+        print('GPT found named entities: ', labels)
 
-    result = {'entities': []}
+        result = Linked_data_DTO(entities = [])
+        
+        # Match each label to a UID using the wikidata entities search service and use OpenAI to chose the best candidate, if result is none, discard the label
+        for label in labels:
+            search_result = search_entity_with_wikidata_service_and_OPENAI(label=label, question=question.text)
+            if search_result is not None:
+                result.entities.append(search_result)
+        
+        return result
     
-    # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
-    for label in labels:
-        search_result = search_entity_with_wikidata_service_and_OPENAI(label=label, question=question.text)
-        if search_result is not None:
-            result['entities'].append(search_result)
-    
-    return result
+    except HTTPException as e:
+        raise e
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error on server while working with GPT v2 method. Error:' + str(e))
+    
 @app.post(linking_service.get('link_endpoint_opentapioca'))
 def get_open_tapioca_response(question:Question_DTO):
     try:
@@ -114,7 +127,7 @@ def get_open_tapioca_response(question:Question_DTO):
             if annotation.get('best_qid'):
                 entities.append({ 'UID': annotation['best_qid'], 'label': annotation.get('best_tag_label') })
 
-        return  { 'entities' : entities }
+        return  Linked_data_DTO(entities = entities)
 
     except HTTPException as e:
         raise e
@@ -139,9 +152,7 @@ def get_falcon_response(question: Question_DTO):
             entity['UID'] = entity.pop('URI').replace(kg_prefix,'')
             entity['label'] = entity.pop('surface form')
         
-        return {
-            'entities' : json.get('entities_wikidata')
-        }
+        return Linked_data_DTO(entities = json.get('entities_wikidata'))
 
     except HTTPException as e:
         raise e
@@ -156,7 +167,7 @@ def search_entity_with_wikidata_service(label:str):
         res = query_api('get', wikidata_search_engine_url, payload={}, headers={}, params=wikidata_search_engine_params)
         
         if res.get('code') != 200:
-            raise HTTPException(status_code=500, detail='Unexpected error using wikidata search entities service. Error: ' + str(e))
+            raise HTTPException(status_code=502, detail='Unexpected error using wikidata search entities service. Error: ' + res.get('text'))
         
         # if no results were returned of the success flag is set to 0 return None
         if len(res.get('json').get('search')) == 0 or res.get('json').get('success') == 0:
@@ -179,10 +190,11 @@ def search_entity_with_wikidata_service_and_OPENAI(label:str, question:str):
         res = query_api('get', wikidata_search_engine_url, payload={}, headers={}, params=wikidata_search_engine_params)
         
         if res.get('code') != 200:
-            raise HTTPException(status_code=500, detail='Unexpected error using wikidata search entities service. Error: ' + res)
+            raise HTTPException(status_code=502, detail='Unexpected error using wikidata search entities service. Error: ' + res.get('text'))
 
         # we will remove elements with no label or description as they are required for this approach
         results = list(filter(lambda x:  x.get('label') is not None and x.get('description') is not None, res.get('json').get('search')))
+        
         # if no results were returned of the success flag is set to 0 return None
         if len(results) == 0 or res.get('json').get('success') == 0:
             print('No match found for: ', label)
@@ -192,9 +204,8 @@ def search_entity_with_wikidata_service_and_OPENAI(label:str, question:str):
 
         res = query_open_ai(selection_prompt_template, {'question': question, 'candidates': '\n'.join(candidates)})
 
+        # load the received best candidate as json
         best_candidate = json.loads(res)
-
-        #best_candidate = {'UID':re.findall(r'Q\d+', res[0])[0], 'label':re.findall('".*"', res[1])[0][1:-1]}
 
         return best_candidate
     
