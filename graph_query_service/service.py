@@ -10,6 +10,8 @@ from utils.Request_utils import query_api
 from utils.Configuration_utils import read_config_file
 from utils.Json_utils import read_json, save_json
 
+from DTOs.graph_query_DTOs import Entity_Triples_DTO, Entity_Table_DTO
+
 import copy
 from pathlib import Path
 from rdflib import Graph, Literal, URIRef, BNode, RDF, RDFS
@@ -86,6 +88,7 @@ def get_entity_triples(entity_UID):
         # check if the entity has an available label for english, if not raise an exception as triples can't be built without using the label
         if entity_dto.get('labels').get('en') is None:
             raise HTTPException(status_code=400,detail='Bad input, provided entity is not related to an english label')
+        
         # Save base values
         label = entity_dto.get('labels').get('en').get('value')
         description = entity_dto.get('descriptions').get('en').get('value') if entity_dto.get('descriptions').get('en') is not None else ''
@@ -128,8 +131,8 @@ def get_entity_triples(entity_UID):
                 # Add the triple
                 entity_graph.add(( Literal('urn:'+label), Literal('urn:' + property_label), Literal(list_to_str(labels)) ))
 
-        return { 'triples' : entity_graph.serialize(format='nt') }
-
+        return Entity_Triples_DTO(triples = entity_graph.serialize(format='nt'))
+    
     except HTTPException as e:
         raise e
     
@@ -145,6 +148,10 @@ def get_entity_table(entity_UID : str):
 
         # get the entity data
         entity_dto = get_entity_data(entity_UID)
+
+        # check if the entity has an available label for english, if not raise an exception as the table would be hard to interpret with no label
+        if entity_dto.get('labels').get('en') is None:
+            raise HTTPException(status_code=400,detail='Bad input, provided entity is not related to an english label')
 
         # initialize base elements on the tables
         entity_table_base = {
@@ -208,7 +215,7 @@ def get_entity_table(entity_UID : str):
         for key in discarted_properties:
             del entity_table_URI[key]
 
-        return { 'labels_table' : entity_table_labels, 'uri_table' : entity_table_URI }
+        return Entity_Table_DTO(labels_table = entity_table_labels, uri_table = entity_table_URI)
 
     except HTTPException as e:
         raise e

@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
 
-from DTOs.linking_DTOs import Linked_data_DTO,  Question_DTO
+from DTOs.linking_DTOs import Linked_Data_DTO,  Question_DTO
 
 from utils.Request_utils import query_api
 from utils.OpenAI_utils import query_open_ai
@@ -66,7 +66,7 @@ def link_data_with_OpenAI(question : Question_DTO, prompt_template : str = ner_p
         labels = [label.strip() for label in query_open_ai(prompt_template, {'question': question.text}).split(',')]
         print('GPT found named entities: ', labels)
 
-        result = Linked_data_DTO(entities = [])
+        result = Linked_Data_DTO(entities = [])
         
         # Match each label to a UID using the wikidata entities search service, if result is none, discard the label
         for label in labels:
@@ -89,7 +89,7 @@ def link_data_with_OpenAI_v2(question : Question_DTO, prompt_template : str = ne
         labels = [label.strip() for label in query_open_ai(prompt_template, {'question': question.text}).split(',')]
         print('GPT found named entities: ', labels)
 
-        result = Linked_data_DTO(entities = [])
+        result = Linked_Data_DTO(entities = [])
         
         # Match each label to a UID using the wikidata entities search service and use OpenAI to chose the best candidate, if result is none, discard the label
         for label in labels:
@@ -127,7 +127,7 @@ def get_open_tapioca_response(question:Question_DTO):
             if annotation.get('best_qid'):
                 entities.append({ 'UID': annotation['best_qid'], 'label': annotation.get('best_tag_label') })
 
-        return  Linked_data_DTO(entities = entities)
+        return  Linked_Data_DTO(entities = entities)
 
     except HTTPException as e:
         raise e
@@ -152,7 +152,7 @@ def get_falcon_response(question: Question_DTO):
             entity['UID'] = entity.pop('URI').replace(kg_prefix,'')
             entity['label'] = entity.pop('surface form')
         
-        return Linked_data_DTO(entities = json.get('entities_wikidata'))
+        return Linked_Data_DTO(entities = json.get('entities_wikidata'))
 
     except HTTPException as e:
         raise e
