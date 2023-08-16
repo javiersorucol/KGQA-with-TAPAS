@@ -6,15 +6,13 @@ from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
 
-from utils.Request_utils import translate, link_graph_elements , ask_tapas, get_entity_table, get_entity_triples, ask_gpt_v1, ask_gpt_v2
+from utils.Request_utils import link_graph_elements , ask_tapas, get_entity_table, get_entity_triples, ask_gpt_v1, ask_gpt_v2
 
 from DTOs.main_DTOs import QUERY_DTO
 
 # Reading the config file
 config_file_path = 'main_service/Config/Config.ini'
 config = read_config_file(config_file_path)
-
-supported_languges = config.get('LANGUAGES', 'supported_languges').split()
 
 # Reding the app configurations to get the service configuration
 app_config_file_path = 'App_config.ini'
@@ -26,7 +24,7 @@ app = FastAPI()
 @app.post(main_service.get('gpt_endpoint'))
 def ask_Wikidata_with_gpt(question: QUERY_DTO):
    try:
-      # Process the question to obtain linked elements (tranlation and linking service are involved)
+      # Process the question to obtain linked elements
       linked_elements = preprocess_question(question)
       print('LINKED ELEMENTS: ', linked_elements)
 
@@ -42,12 +40,13 @@ def ask_Wikidata_with_gpt(question: QUERY_DTO):
       
       print("ENTITY TRIPLES: ", entity_triples.keys())
 
-      # Ask GPT using each table
+      # Ask GPT using each entity recieved triple
       answers = {}
       for key,triples in entity_triples.items():
          print('entity: ', key)
+
          res = ask_gpt_v2(triples=triples.get('triples'), question=question.text)
-         # res = ask_gpt_v1(triples=triples.get('triples'), question=question.text)
+
          if res.get('code') != 200:
             raise HTTPException(status_code=502, detail='Error connecting with Answer service: ' + res.get('text')) 
          
@@ -66,7 +65,7 @@ def ask_Wikidata_with_gpt(question: QUERY_DTO):
 @app.post(main_service.get('tapas_endpoint'))
 def ask_Wikidata_with_TAPAS(question: QUERY_DTO):
    try:
-      # Process the question to obtain linked elements (tranlation and linking service are involved)
+      # Process the question to obtain linked elements
       linked_elements = preprocess_question(question)
       print('LINKED ELEMENTS: ', linked_elements)
 
@@ -105,23 +104,9 @@ def ask_Wikidata_with_TAPAS(question: QUERY_DTO):
 
 def preprocess_question(question: QUERY_DTO):
    # Process the question to obtain the linked elements
-   # Check if the langugeis supported
-   if question.lang not in supported_languges:
-      raise HTTPException(status_code=400, detail='Languge not supported. The supported languges are: ' + str(supported_languges))
-   
-   # If the language is not english, query the translation service 
-   if question.lang != 'en':
-      res = translate(query=question.text,lang=question.lang)
-
-      if res.get('code') != 200:
-         raise HTTPException(status_code=502, detail='Error with while translting the query: ' + res.get('text'))          
-
-      question.text = res.get('json').get('text')
-
    print('QUESTION: ', question.text)
    
    # Get question links to Wikidata KG
-
    res = link_graph_elements(question.text)
    if res.get('code') != 200:
       raise HTTPException(status_code=502, detail='Error retieving the query links from the linking service: ' + res.get('text')) 

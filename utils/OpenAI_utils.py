@@ -1,8 +1,5 @@
-from utils.Request_utils import query_api
-
 import openai
 from dotenv import load_dotenv
-from fastapi import HTTPException
 
 from string import Template
 from pathlib import Path
@@ -24,9 +21,29 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def query_open_ai(prompt_template : str, prompt_params: dict, max_tokens : int=100):
     try:
         prompt = Template(prompt_template).substitute(prompt_params)
-        gpt3_model = 'text-davinci-003'
+        gpt_model = 'gpt-4'
+        response = openai.ChatCompletion.create(
+            model = gpt_model,
+            messages = [{'role':'user', 'content':prompt}],
+            max_tokens = max_tokens,
+            n = 1,
+            stop = None,
+            temperature = 0
+        )
+
+        answer = response.get('choices')[0].get('message').get('content')
+        return answer
+
+    except Exception as e:
+        print('Error while querying openai: ', str(e))
+        raise Exception('OpenAI API error: ' + str(e))
+
+def query_open_ai_gpt_3(prompt_template : str, prompt_params: dict, max_tokens : int=100):
+    try:
+        prompt = Template(prompt_template).substitute(prompt_params)
+        gpt_model = 'text-davinci-003'
         response = openai.Completion.create(
-            engine = gpt3_model,
+            engine = gpt_model,
             prompt = prompt,
             max_tokens = max_tokens,
             n = 1,
@@ -38,5 +55,4 @@ def query_open_ai(prompt_template : str, prompt_params: dict, max_tokens : int=1
     
     except Exception as e:
         print('Error while querying openai: ', str(e))
-        raise HTTPException(status_code=502, detail='OpenAI API error: ' + str(e))
-        
+        raise Exception('OpenAI API error: ' + str(e))

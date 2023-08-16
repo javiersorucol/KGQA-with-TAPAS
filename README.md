@@ -1,45 +1,37 @@
-# KGQA-with-TAPAS
-Using TeBaQA to create a KGQA pipeline. The main idea is to transfor a KGQA problem to  QA over tables problem,  then use TAPAS to find an answer. We aim to achieve this by creating relevant tables for each question based on the class of all the question's entities.
+# KGQA-with-different-QA-methods
+The main goal of this project is to use different QA methods to build a KGQA pipeline, the methods used are TAPAS and LLMs (GPT). This system transforms the knowledge contained in the Wikidata Knowlege Graph to tables and text and used it with the QA methods to answer user natural language questions.
 
 This project is designed using a microservice architechture, we work with the followin microservices:
-- Translation Service
 - Entity linking Service
 - Answer service
 - Graph query service (currently  working with Wikidata)
-- Classification service
 - Main API
 
 ## Run the project
 To run each service use the following commands:
 
-- Translation service:
-
-```
-uvicorn translation_service.service:app  --reload --log-config translation_service/Logs/log_config.ini --port 8091
-```
-
 - Linking service:
 
 ```
-uvicorn linking_service.service:app  --reload --log-config linking_service/Logs/log_config.ini --port 8092
+uvicorn linking_service.service:app  --reload --log-config linking_service/Logs/log_config.ini --port 8091
 ```
 
 - Graph Query service
 
 ```
-uvicorn graph_query_service.service:app  --reload --log-config graph_query_service/Logs/log_config.ini --port 8093
+uvicorn graph_query_service.service:app  --reload --log-config graph_query_service/Logs/log_config.ini --port 8092
 ```
 
 - Answer service:
 
 ```
-uvicorn answer_service.service:app  --reload --log-config answer_service/Logs/log_config.ini --port 8094
+uvicorn answer_service.service:app  --reload --log-config answer_service/Logs/log_config.ini --port 8093
 ```
 
 - Main service
 
 ```
-uvicorn main_service.service:app  --reload --log-config main_service/Logs/log_config.ini --port 8097
+uvicorn main_service.service:app  --reload --log-config main_service/Logs/log_config.ini --port 8094
 ```
 ## Evaluation
 We performed 3 experiments, one to evaluate entity linking, other to evaluate the used prompts and one to compare the KGQA systems.

@@ -48,7 +48,6 @@ def query_api(method:str, url:str, headers:dict, params:dict, payload, attempts:
 app_config_file_path = 'App_config.ini'
 app_config = read_config_file(app_config_file_path)
 
-translation_service = dict(app_config.items('TRANSLATION_SERVICE'))
 linking_service = dict(app_config.items('LINKING_SERVICE'))
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
 answer_service = dict(app_config.items('ANSWER_SERVICE'))
@@ -167,25 +166,6 @@ def ask_tapas(table : dict, question : str):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while querying answer service for tapas answer: ' + str(e))
-
-def translate(query:str, lang:str):
-    # to translate we will query the translation service
-    try:
-        global translation_service
-        
-        payload = { 'text' : query, 'mode' : lang + '-en' }
-
-        url = get_service_url(translation_service, 'translate_endpoint')
-
-        res = query_api('post', url, {}, {}, payload)
-        
-        return res
-
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail='Unexpected error while querying translation service: ' + str(e))
 
 
 def link_graph_elements(query:str):
