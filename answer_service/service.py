@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from utils.Configuration_utils import read_config_file
 from utils.OpenAI_utils import query_open_ai
 
-from DTOs.answer_DTOs import Table_DTO, Triples_DTO
+from DTOs.answer_DTOs import Table_DTO, Triples_DTO, Answer_DTO
 
 import pandas as pd
 from transformers import pipeline
@@ -42,10 +42,10 @@ def ask_tapas(table_DTO : Table_DTO):
 
       answer= tqa(table=table, query=table_DTO.question)
       answer = answer.get('answer')
-      print(answer)
+      print('Tapas answer: ', answer)
       print('------------------------------------------------------')
-      if answer == '':
-         return 'Answer not found'
+      if answer.replace('COUNT >','').replace('SUM >','').replace('AVERAGE >','').strip() == '':
+         return Answer_DTO( answer = 'Answer not found')
 
       if 'COUNT >' in answer:
          res = re.findall(r'COUNT >.*', answer)
@@ -57,7 +57,8 @@ def ask_tapas(table_DTO : Table_DTO):
             try:
                answer = str(sum([ int(x) for x in (res[0].replace('SUM >','').split(';')) ]))
             except:
-               return 'The answer of your question is: ' + answer.replace('SUM >','')
+               return 'The answer to your question is: ' + answer.replace('SUM >','')
+            
       elif 'AVERAGE >' in answer:
          print(1)
          res = re.findall(r'AVERAGE >.*', answer)
@@ -65,9 +66,9 @@ def ask_tapas(table_DTO : Table_DTO):
             try:
                answer = str(mean([ int(x) for x in (res[0].replace('AVERAGE >','').split(';')) ]))
             except:
-               return 'The answer of your question is: ' + answer.replace('AVERAGE >','')   
+               return 'The answer to your question is: ' + answer.replace('AVERAGE >','')   
 
-      return 'The answer of your question is: ' + answer
+      return Answer_DTO( answer = 'The answer to your question is: ' + answer)
    
    except HTTPException as e:
       raise e
@@ -83,7 +84,7 @@ def ask_gpt_v1(triples_DTO : Triples_DTO):
 
       print('Answer: ', answer)
 
-      return answer
+      return Answer_DTO(answer = answer)
 
    except HTTPException as e:
       raise e
@@ -102,23 +103,23 @@ def ask_gpt_v2(triples_DTO : Triples_DTO):
       if 'COUNT >' in answer:
          res = re.findall(r'COUNT >.*', answer)
          if len(res) > 0:
-            answer = 'The answer of your question is: ' + str(len(res[0].replace('COUNT >','').split(';')))
+            answer = 'The answer to your question is: ' + str(len(res[0].replace('COUNT >','').split(';')))
       elif 'SUM >' in answer:
          res = re.findall(r'SUM >.*', answer)
          if len(res) > 0:
             try:
-               answer = 'The answer of your question is: ' + str(sum([ int(x) for x in (res[0].replace('SUM >','').split(';')) ]))
+               answer = 'The answer to your question is: ' + str(sum([ int(x) for x in (res[0].replace('SUM >','').split(';')) ]))
             except:
                return answer.replace('SUM >','')
       elif 'AVG >' in answer:
          res = re.findall(r'AVG >.*', answer)
          if len(res) > 0:
             try:
-               answer = 'The answer of your question is: ' + str(mean([ int(x) for x in (res[0].replace('AVG >','').split(';')) ]))
+               answer = 'The answer to your question is: ' + str(mean([ int(x) for x in (res[0].replace('AVG >','').split(';')) ]))
             except:
                return answer.replace('AVG >','')     
 
-      return answer
+      return Answer_DTO(answer = answer)
 
    except HTTPException as e:
       raise e

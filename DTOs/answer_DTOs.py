@@ -7,3 +7,6 @@ class Table_DTO(BaseModel):
 class Triples_DTO(BaseModel):
     question : str
     triples : str
+
+class Answer_DTO(BaseModel):
+    answer : str

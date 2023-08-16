@@ -51,8 +51,8 @@ def ask_Wikidata_with_gpt(question: QUERY_DTO):
          if res.get('code') != 200:
             raise HTTPException(status_code=502, detail='Error connecting with Answer service: ' + res.get('text')) 
          
-         print('answer: ', res.get('json'))
-         answers['answer'] = res.get('json')
+         print('answer: ', res.get('json').get('answer'))
+         answers = res.get('json')
          break
       
       return answers
@@ -90,8 +90,8 @@ def ask_Wikidata_with_TAPAS(question: QUERY_DTO):
          if res.get('code') != 200:
             raise HTTPException(status_code=502, detail='Error connecting with Answer service: ' + res.get('text')) 
          
-         print('answer: ', res.get('json'))
-         answers['answer'] = res.get('json')
+         print('answer: ', res.get('json').get('answer'))
+         answers = res.get('json')
          break
       
       return answers

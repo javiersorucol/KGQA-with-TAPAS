@@ -21,7 +21,7 @@ if not Path(open_ai_key_file_path).is_file():
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def query_open_ai(prompt_template : str, prompt_params: dict, max_tokens : int=2048):
+def query_open_ai(prompt_template : str, prompt_params: dict, max_tokens : int=100):
     try:
         prompt = Template(prompt_template).substitute(prompt_params)
         gpt3_model = 'text-davinci-003'
