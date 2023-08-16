@@ -20,9 +20,6 @@ entity_prefix = 'http://www.wikidata.org/entity/'
 test_subset = read_json('evaluation/datasets/test_subsets.json').get('simple')
 train_subset = read_json('evaluation/datasets/train_subsets.json').get('simple')
 
-ignore_questions_test = [56, 136, 132, 182,68,24]
-ignore_questions_train = [115, 1, 3, 392,327,78]
-
 def evaluate(prompt_id=prompt_id, prompt=prompt):
     subsets = ['boolean','aggregation','singular','multiple']
     results = {
@@ -38,19 +35,18 @@ def evaluate_subset(selected_subset:str):
     global train_subset
     print('Evaluating subset: ', selected_subset)
     print('Evaluating of the subset with the testing dataset...')
-    test_results=evaluate_dataset(test_subset, selected_subset=selected_subset,ignored_list=ignore_questions_test)
+    test_results=evaluate_dataset(test_subset, selected_subset=selected_subset)
     print('Done')
     print('Evaluating of the subset with the training dataset...')
-    train_results=evaluate_dataset(train_subset, selected_subset=selected_subset,ignored_list=ignore_questions_train)
+    train_results=evaluate_dataset(train_subset, selected_subset=selected_subset)
     print('Done')
     return {'train_results':train_results, 'test_results':test_results}
 
-def evaluate_dataset(dataset: dict, selected_subset : str, ignored_list=[]):
+def evaluate_dataset(dataset: dict, selected_subset : str):
     results = {}
     try:
         for question in dataset.get(selected_subset):
-            if int(question.get('id')) not in ignored_list:
-                results[question.get('id')] = evaluate_question(question=question)
+            results[question.get('id')] = evaluate_question(question=question)
 
         return results
     except Exception as e:
