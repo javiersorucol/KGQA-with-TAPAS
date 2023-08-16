@@ -18,7 +18,7 @@ config = read_config_file('App_config.ini')
 answer_service = dict(config.items('ANSWER_SERVICE'))
 answer_service_url = 'http://' + answer_service.get('ip') + ':' + answer_service.get('port')
 
-class Tapas_testing(unittest.TestCase):
+class Answer_Service_Testing(unittest.TestCase):
 
     ask_tapas_endpoint = answer_service.get('ask_tapas_endpoint')
     ask_gpt_endpoint_v1 = answer_service.get('ask_gpt_endpoint_v1')
@@ -36,7 +36,7 @@ class Tapas_testing(unittest.TestCase):
 
         self.assertEqual(res.get('code'), 200 , self.ask_tapas_endpoint + ' endpoint is failing with a correct input.')
 
-        # testing question text is in the expected answer
+        # testing if the resulting dto has the correct format
         self.assertIsNotNone(res.get('json').get('answer') , self.ask_tapas_endpoint + ' endpoint is failing with a correct input, answer key not found.')
 
     # service must return 422 whe receiving invalid payload
