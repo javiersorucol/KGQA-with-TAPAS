@@ -39,14 +39,14 @@ We performed 3 experiments, one to evaluate entity linking, other to evaluate th
 All the experiments can be found in the evalution folder, and are run using a selection of "simple" questions from QALD9-ES. We define a simple question as a question which resulting SPARQL only requires one triple to get an answer. The questions where also grouped by the answer type to check the performance of the systems over different type of questions (singular, multiple, boolean, aggregation). The used dataset can be found in the evaluation/datasets folder.
 
 ### Entity linking experiment
-In this experiment we compare two versions of our GPT entity linker with Falcon 2.0 and OpenTapioca. For this experiment we added the expected entities to all the questions, we've achieved this using the entity_extractor.ipynb notebook in the evaluation/notebooks folder. This notebook looks for the required entities using the question SPARQL to look for all the used entities and store them under the key "linked_entities".
+In this experiment we compare two versions of our GPT entity linker with Falcon 2.0 and OpenTapioca. For this experiment we added the expected entities to all the questions, we've achieved this using the entity_extractor.ipynb notebook in the evaluation/notebooks folder. This notebook looks for the required entities using the question SPARQL to look for all the used entities and store them under the key "linked_entities". In this experiment question type is not relevant therefore we present results for the complete evaluation set.
 The results of the experiment are:
-|    Method   |  endpoint |  Precision (test set)  |  Recall (test set)  |  F1 score (test set)  |  Precision (train set)  |  Recall (train set)  |  F1 score (train set)  |
-|-------------|:---------:|:----------------------:|:-------------------:|:---------------------:|:-----------------------:|:--------------------:|:-----------------:|
-|    GPT v1   | /link/gpt/v1/  |  0.5341  |  0.7231  |  0.6144  |  0.5424  | 0.7737  |  0.6377  |
-|    GPT v2   | /link/gpt/v2/  |  0.5057  |  0.6769  |  0.5789  |  0.5092  |  0.7263  |  0.5986  |
-|  Falcon 2.0  | /link/falcon/  |  0.3625  |  0.4462  |  0.4  |  0.3857  |  0.4263  |  0.405  |
-|  OpenTapioca  | /link/opentapioca/  |  0.4308  |  0.56  |  0.487  |  0.5658  |  0.4526  |  0.5029  |
+|    Method   |  endpoint |  Precision |  Recall  |  F1 score  |
+|-------------|:---------:|:----------:|:--------:|:----------:|
+|    GPT v1   | /link/gpt/v1/  |  0.8146  | 0.8196  |  0.8171  |
+|    GPT v2   | /link/gpt/v2/  |  0.8098  |  0.8021  |  0.8059  |
+|  Falcon 2.0  | /link/falcon/  |  0.4130  |  0.4733  |  0.4410  |
+|  OpenTapioca  | /link/opentapioca/  |  0.5097  |  0.4582  |  0.4825  |
 
 ### Prompting experiment
 |  Prompt  |   subset       |  Precision  |  Recall  |  F1 score  |  Correct answers(%) | 
