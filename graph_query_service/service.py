@@ -18,9 +18,10 @@ from rdflib import Graph, Literal, URIRef, BNode, RDF, RDFS
 import re
 
 config_file_path = 'graph_query_service/Config/Config.ini'
+app_config_file_path = 'App_config.ini'
 
 # check if required config files exist
-if not Path(config_file_path).is_file():
+if not Path(config_file_path).is_file() or not Path(app_config_file_path).is_file:
     print('Config file was not found for the graph query service.')
     exit()
 
@@ -53,7 +54,6 @@ banned_data_path = config['SERVER_PARAMS']['banned_data_path']
 labels_map_path = config['SERVER_PARAMS']['labels_map_path']
 
 # Reding the service configurations
-app_config_file_path = 'App_config.ini'
 app_config = read_config_file(app_config_file_path)
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
 

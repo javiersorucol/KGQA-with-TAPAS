@@ -15,9 +15,10 @@ from pathlib import Path
 import json
 
 config_file_path = 'linking_service/Config/Config.ini'
+app_config_file_path = 'App_config.ini'
 
 # check if required config files exist
-if not Path(config_file_path).is_file():
+if not Path(config_file_path).is_file() or not Path(app_config_file_path).is_file:
     print('Config file was not found for the linking service.')
     exit()
 
@@ -43,7 +44,6 @@ wikidata_search_engine_url = config['WIKIDATA_SEARCH_ENGINE']['url']
 wikidata_search_engine_params = dict(config.items('WIKIDATA_SEARCH_ENGINE_PARAMS'))
 
 # Reding the app configurations to get the service configuration
-app_config_file_path = 'App_config.ini'
 app_config = read_config_file(app_config_file_path)
 linking_service = dict(app_config.items('LINKING_SERVICE'))
 

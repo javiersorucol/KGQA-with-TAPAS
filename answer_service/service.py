@@ -2,6 +2,8 @@ import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
@@ -15,8 +17,15 @@ from string import Template
 import re
 from statistics import mean 
 
-# Reading the config file
 config_file_path = 'answer_service/Config/Config.ini'
+app_config_file_path = 'App_config.ini'
+
+# check if required config files exist
+if not Path(config_file_path).is_file() or not Path(app_config_file_path).is_file:
+    print('Config file was not found for the answer service.')
+    exit()
+
+# Reading the config file
 config = read_config_file(config_file_path)
 
 # read the config vars
@@ -24,8 +33,7 @@ gpt_aggregation_prompt = config['GPT_METHOD']['gpt_aggregation_prompt'].replace(
 manual_aggregation_prompt = config['GPT_METHOD']['manual_aggregation_prompt'].replace(r'\n', '\n')
 
 # Read service configuration
-config = read_config_file('App_config.ini')
-
+config = read_config_file(app_config_file_path)
 answer_service = dict(config.items('ANSWER_SERVICE'))
 
 
