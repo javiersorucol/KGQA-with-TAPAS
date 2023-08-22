@@ -1,6 +1,9 @@
 # Before running this script make sure to run the main, linking, graph query and answer ser
 import sys
 import os
+from pathlib import Path
+import time
+import string
   
 current = os.path.dirname(os.path.realpath(__file__))
 parent_directory = os.path.dirname(current)
@@ -12,23 +15,35 @@ from utils.Configuration_utils import read_config_file
 from utils.Json_utils import read_json, save_json
 from graph_query_service.service import get_label
 
-prompt_id = 'prompt_2_manual_operations'
-prompt = 'Answer the following question using only the knowledge expressed in the following triples.\nThe answer must follow the following format: The answer of your question is: &answers\nIn case of a closed question, replace &answers only with yes or no\nIn case the answer is not provided in the given triples, please answer with: Answer not found\nIn case the question asks to perform an aggregation operation (count, sum, average), select the found elements that answers the question, replace &answers with the element found splited by semicolon add a prefix depending on the operation (COUNT > for count operation, SUM > for sum operation a and AVG > for average operation).\nIn any other case the value &answers must be replaced with the found elements that answer the question separated by semicolon.\ntriples:\n${triples}\nQuestion:${question}\nAnswer:'
+prompt_1_id = 'prompt_1_gpt_operations'
+prompt_2_id = 'prompt_2_manual_operations'
+prompt_2 = 'Answer the following question using only the knowledge expressed in the following triples.\nThe answer must follow the following format: The answer to your question is: &answers\nIn case of a closed question, replace &answers only with yes or no\nIn case the answer is not provided in the given triples, please answer with: Answer not found\nIn case the question asks to perform an aggregation operation (count, sum, average), select the found elements that answers the question, replace &answers with the element found splited by semicolon add a prefix depending on the operation (COUNT > for count operation, SUM > for sum operation a and AVG > for average operation).\nIn any other case the value &answers must be replaced with the found elements that answer the question separated by semicolon.\ntriples:\n${triples}\nQuestion:${question}\nAnswer:'
+prompt_1 = 'Answer the following question using only the knowledge expressed in the following triples.\nThe answer must follow the following format: The answer to your question is: &answers\nIn case of a closed question, replace &answers only with yes or no\nIn case the answer is not provided in the given triples, please answer with: Answer not found\nIn case the question asks to perform an aggregation operation (count, sum, average), select the found elements that answers the question, replace &answers with the element found split by semicolon add a prefix depending on the operation (COUNT > for count operation, SUM > for sum operation a and AVG > for average operation).\nIn any other case the value &answers must be replaced with the found elements that answer the question separated by semicolon.\ntriples:\n${triples}\nQuestion:${question}\nAnswer:'
 entity_prefix = 'http://www.wikidata.org/entity/'
 
 # We will only evaluate over 'Simple' questions, we define simple question as questions where only one triple is required to get the answer
 test_subset = read_json('evaluation/datasets/test_subsets.json').get('simple')
 train_subset = read_json('evaluation/datasets/train_subsets.json').get('simple')
 
-def evaluate(prompt_id=prompt_id, prompt=prompt):
+results_path = 'evaluation/results/prompting_results.json'
+
+# check if results already stored
+if not Path(results_path).is_file():
+    results = {}
+else:
+    
+    results = read_json(results_path)
+
+
+def evaluate(prompt_id, prompt):
+    global results
     subsets = ['boolean','aggregation','singular','multiple']
-    results = {
+    results[prompt_id] = {
         'prompt': prompt
     }
     for subset in subsets:
-        results[subset] = evaluate_subset(subset)
+        results[prompt_id][subset] = evaluate_subset(subset)
     
-    save_json('evaluation/results/'+prompt_id+'_results.json', results)
 
 def evaluate_subset(selected_subset:str):
     global test_subset
@@ -46,7 +61,11 @@ def evaluate_dataset(dataset: dict, selected_subset : str):
     results = {}
     try:
         for question in dataset.get(selected_subset):
+            start = time.time()
             results[question.get('id')] = evaluate_question(question=question)
+            end = time.time()
+            if end - start < 60:
+                time.sleep(60 - (end-start))
 
         return results
     except Exception as e:
@@ -85,7 +104,7 @@ def evaluate_question(question: dict, TP=0, FN=0, FP=0):
         res = res.get('json').get('answer')
 
         if 'Answer not found' not in res:
-            actual_answers = [x.strip() for x in res.replace('The answer of your question is: ','').rstrip('.').split(';')]
+            actual_answers = [x.strip() for x in res.replace('The answer to your question is: ','').rstrip('.').split(';')]
         else:
             notes = 'Answer not found'
             correct = False
@@ -121,7 +140,9 @@ def evaluate_question(question: dict, TP=0, FN=0, FP=0):
 
 def qualify_result(expected_answers, actual_answers, TP, FN, FP, correct):
     def compare_element_array(el, arr):
+        el = el.replace('+','')
         for x in arr:
+            x = x.replace('+','')
             if el.lower() in x.lower() or x.lower() in el.lower():
                 return True
         return False
@@ -145,4 +166,6 @@ def qualify_result(expected_answers, actual_answers, TP, FN, FP, correct):
     return TP, FN, FP, correct
 
 # print(evaluate_question(example_question,0,0,0))
-evaluate()
+evaluate(prompt_id=prompt_1_id, prompt=prompt_1)
+#evaluate(prompt_id=prompt_2_id, prompt=prompt_2)
+save_json(results_path, results)
