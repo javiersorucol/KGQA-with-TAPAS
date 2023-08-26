@@ -65,16 +65,16 @@ def ask_tapas(table_DTO : Table_DTO):
             try:
                answer = str(sum([ int(x) for x in (res[0].replace('SUM >','').split(';')) ]))
             except:
-               return 'The answer to your question is: ' + answer.replace('SUM >','')
+               return Answer_DTO(answer='The answer to your question is: ' + answer.replace('SUM >',''))
             
       elif 'AVERAGE >' in answer:
-         print(1)
          res = re.findall(r'AVERAGE >.*', answer)
          if len(res) > 0:
             try:
                answer = str(mean([ int(x) for x in (res[0].replace('AVERAGE >','').split(';')) ]))
             except:
-               return 'The answer to your question is: ' + answer.replace('AVERAGE >','')   
+               return Answer_DTO(answer='The answer to your question is: ' + answer.replace('AVERAGE >',''))   
+
 
       return Answer_DTO( answer = 'The answer to your question is: ' + answer)
    
@@ -111,19 +111,19 @@ def ask_gpt_v2(triples_DTO : Triples_DTO):
       if 'COUNT >' in answer:
          res = re.findall(r'COUNT >.*', answer)
          if len(res) > 0:
-            answer = 'The answer to your question is: ' + str(len(res[0].replace('COUNT >','').split(';')))
+            answer = Answer_DTO(answer='The answer to your question is: ' + str(len(res[0].replace('COUNT >','').split(';'))))
       elif 'SUM >' in answer:
          res = re.findall(r'SUM >.*', answer)
          if len(res) > 0:
             try:
-               answer = 'The answer to your question is: ' + str(sum([ int(x) for x in (res[0].replace('SUM >','').split(';')) ]))
+               answer = Answer_DTO(answer='The answer to your question is: ' + str(sum([ int(x) for x in (res[0].replace('SUM >','').split(';')) ])))
             except:
                return answer.replace('SUM >','')
       elif 'AVG >' in answer:
          res = re.findall(r'AVG >.*', answer)
          if len(res) > 0:
             try:
-               answer = 'The answer to your question is: ' + str(mean([ int(x) for x in (res[0].replace('AVG >','').split(';')) ]))
+               answer = Answer_DTO(answer='The answer to your question is: ' + str(mean([ int(x) for x in (res[0].replace('AVG >','').split(';')) ])))
             except:
                return answer.replace('AVG >','')     
 

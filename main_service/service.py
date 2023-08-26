@@ -38,6 +38,10 @@ def ask_Wikidata_with_gpt(question: QUERY_DTO):
       linked_elements = preprocess_question(question)
       print('LINKED ELEMENTS: ', linked_elements)
 
+      # if no linked elements were found, return answer not found
+      if len(linked_elements.get('entities')) == 0:
+         return FINAL_ANSWER_DTO(answer='Answer not found', linked_elements=linked_elements)
+
       # Get related entity triples
       entity_triples = {}
       for entity in linked_elements.get('entities'):
@@ -78,6 +82,10 @@ def ask_Wikidata_with_TAPAS(question: QUERY_DTO):
       # Process the question to obtain linked elements (tranlation and linking service are involved)
       linked_elements = preprocess_question(question)
       print('LINKED ELEMENTS: ', linked_elements)
+
+      # if no linked elements were found, return answer not found
+      if len(linked_elements.get('entities')) == 0:
+         return FINAL_ANSWER_DTO(answer='Answer not found', linked_elements=linked_elements)
 
       # Get the related entity tables
       entity_tables = {}

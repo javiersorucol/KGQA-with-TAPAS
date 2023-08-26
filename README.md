@@ -68,14 +68,24 @@ The results of the experiment are:
 | prompt 2 |  aggregaation  |  0.3846     |  0.3571  |  0.3704    |  35.71%             |
 
 ### Systems experiment
-|  System  |   subset       |  Precision  |  Recall  |  F1 score  |  Correct answers(%) | 
-|----------|----------------|-------------|----------|------------|---------------------|
-| GPT KGQA |  singular      |  0.7966     |  0.7768  |  0.7866    |  75.21%             |
-| GPT KGQA |  multiple      |  0.7986     |  0.0340  |  0.0653    |  46.97%             |
-| GPT KGQA |  boolean       |  1.0000     |  0.7273  |  0.8421    |  72.73%             |
-| GPT KGQA |  aggregaation  |  0.2273     |  0.3571  |  0.2778    |  35.71%             |
-|----------|----------------|-------------|----------|------------|---------------------|
-| TAPAS KGQA |  singular      |  0.3529     |  0.4500  |  0.3956    |  44.17%             |
-| TAPAS KGQA |  multiple      |  0.4124     |  0.0060  |  0.0118    |  14.93%             |
-| TAPAS KGQA |  boolean       |  0.0000     |  0.0000  |  0.0000    |  00.00%             |
-| TAPAS KGQA |  aggregaation  |  0.4286     |  0.4286  |  0.4286    |  42.86%             |
+|  System  | Language |   Subset       |  Precision  |  Recall  |  F1 score  |  Correct answers(%) | 
+|----------|----------|----------------|-------------|----------|------------|---------------------|
+| GPT KGQA |  English |  singular      |  0.9100     |  0.7521  |  0.8235    |  74.38%             |
+| GPT KGQA |  English |  multiple      |  0.8996     |  0.0307  |  0.0593    |  52.24%             |
+| GPT KGQA |  English |  boolean       |  1.0000     |  0.6818  |  0.8108    |  68.18%             |
+| GPT KGQA |  English |  aggregaation  |  0.7778     |  0.5000  |  0.6087    |  50.00%             |
+|----------|----------|----------------|-------------|----------|------------|---------------------|
+| GPT KGQA |  Spanish |  singular      |  0.8713     |  0.7273  |  0.7928    |  71.07%             |
+| GPT KGQA |  Spanish |  multiple      |  0.9600     |  0.0321  |  0.0622    |  46.27%             |
+| GPT KGQA |  Spanish |  boolean       |  0.8000     |  0.5454  |  0.6486    |  54.54%             |
+| GPT KGQA |  Spanish |  aggregaation  |  0.4545     |  0.3571  |  0.4000    |  35.71%             |
+|----------|----------|----------------|-------------|----------|------------|---------------------|
+| TAPAS KGQA |  English |  singular      |  0.3709     |  0.4628  |  0.4118    |  45.45%             |
+| TAPAS KGQA |  English |  multiple      |  0.4396     |  0.0059  |  0.0117    |  16.42%             |
+| TAPAS KGQA |  English |  boolean       |  0.0000     |  0.0000  |  0.0000    |  00.00%             |
+| TAPAS KGQA |  English |  aggregaation  |  0.4167     |  0.3571  |  0.3846    |  35.71%             |
+|------------|----------|----------------|-------------|----------|------------|---------------------|
+| TAPAS KGQA |  Spanish |  singular      |  0.1450     |  0.1570  |  0.1508    |  15.70%             |
+| TAPAS KGQA |  Spanish |  multiple      |  0.2272     |  0.0032  |  0.0063    |  4.48%              |
+| TAPAS KGQA |  Spanish |  boolean       |  0.0000     |  0.0000  |  0.0000    |  00.00%             |
+| TAPAS KGQA |  Spanish |  aggregaation  |  0.1818     |  0.1429  |  0.1600    |  14.29%             |

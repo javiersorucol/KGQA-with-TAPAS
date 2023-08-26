@@ -2,7 +2,7 @@ import requests
 from fastapi import HTTPException
 from utils.Configuration_utils import read_config_file
 
-def query_api(method:str, url:str, headers:dict, params:dict, payload, attempts:int = 1, paylod_type:str='json'):
+def query_api(method:str, url:str, headers:dict, params:dict, payload, attempts:int = 2, paylod_type:str='json'):
     try:
         attempt = 0
         res = None
