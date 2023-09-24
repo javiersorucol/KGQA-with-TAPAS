@@ -1,17 +1,8 @@
 from pydantic import BaseModel
-from typing import Optional, List
-from typing_extensions import TypedDict
 
-class Table_template_property_DTO(BaseModel):
-    UID: str
-    label: str
-    type: str
+class Entity_Table_DTO(BaseModel):
+    labels_table : dict
+    uri_table : dict
 
-class Table_template_DTO(BaseModel):
-    UID: str
-    properties: List[Table_template_property_DTO]
-
-class Table_templates_DTO(BaseModel):
-    templates: List[Table_template_DTO]
-    entities_UIDs: List[str]
-    
+class Entity_Triples_DTO(BaseModel):
+    triples : str

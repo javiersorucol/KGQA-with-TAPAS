@@ -1,10 +1,10 @@
 # Before running this script make sure to run the translation Service
 import sys
 import os
-  
+
 current = os.path.dirname(os.path.realpath(__file__))
 parent_directory = os.path.dirname(current)
-  
+
 sys.path.append(parent_directory)
 
 import unittest
