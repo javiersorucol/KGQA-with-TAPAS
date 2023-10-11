@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 
 from utils.Configuration_utils import read_config_file
 
-from utils.Request_utils import translate, link_graph_elements , ask_tapas, get_entity_table, get_entity_triples, ask_gpt_v1, ask_gpt_v2
+from utils.Request_utils import translate, link_graph_elements , ask_tapas, get_entity_table, get_entity_triples, ask_gpt_v1, ask_gpt_v2, link_graph_elements_gpt_v1, get_entity_triples_lang_chain
 
 from DTOs.main_DTOs import QUERY_DTO, FINAL_ANSWER_DTO
 
@@ -30,6 +30,44 @@ app_config = read_config_file(app_config_file_path)
 main_service = dict(app_config.items('MAIN_SERVICE'))
 
 app = FastAPI()
+
+
+
+@app.post(main_service.get('langchain_endpoint'))
+def ask_Wikidata_with_gpt(question: QUERY_DTO):
+   try:
+      # Process the question to obtain linked elements (tranlation and linking service are involved)
+      linked_elements = preprocess_question(question, linking_function=link_graph_elements_gpt_v1)
+      print('LINKED ELEMENTS: ', linked_elements)
+
+      # if no linked elements were found, return answer not found
+      if len(linked_elements.get('entities')) == 0:
+         return FINAL_ANSWER_DTO(answer='Answer not found', linked_elements=linked_elements)
+
+      # Get related entity triples
+      res = get_entity_triples_lang_chain(linked_elements, question.text)
+      
+      if res.get('code') != 200:
+         raise HTTPException(status_code=502, detail='Error retieving the entity triples from the graph query service.' + str(res.get('text'))) 
+      
+      entity_triples = res.get('json')
+
+      # Ask GPT using triples
+      res = ask_gpt_v1(triples=entity_triples.get('triples'), question=question.text)
+      
+      if res.get('code') != 200:
+         raise HTTPException(status_code=502, detail='Error connecting with Answer service: ' + res.get('text')) 
+         
+      print('answer: ', res.get('json').get('answer'))
+      answers = res.get('json').get('answer')
+      
+      return FINAL_ANSWER_DTO(answer=answers, linked_elements=linked_elements)
+
+   except HTTPException as e:
+      raise e
+   except Exception as e:
+      raise HTTPException(status_code=500, detail='Unexpected error on main server while attending the query: ' + str(e))
+
 
 @app.post(main_service.get('gpt_endpoint'))
 def ask_Wikidata_with_gpt(question: QUERY_DTO):
@@ -120,7 +158,7 @@ def ask_Wikidata_with_TAPAS(question: QUERY_DTO):
 
 # Functions
 
-def preprocess_question(question: QUERY_DTO):
+def preprocess_question(question: QUERY_DTO, linking_function=link_graph_elements):
    # Process the question to obtain the linked elements
 
    # Check if the langugeis supported
@@ -139,7 +177,7 @@ def preprocess_question(question: QUERY_DTO):
    print('QUESTION: ', question.text)
    
    # Get question links to Wikidata KG
-   res = link_graph_elements(question.text)
+   res = linking_function(question.text)
    if res.get('code') != 200:
       raise HTTPException(status_code=502, detail='Error retieving the query links from the linking service: ' + res.get('text')) 
    

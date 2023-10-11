@@ -11,14 +11,20 @@ from utils.Configuration_utils import read_config_file
 from utils.Json_utils import read_json, save_json
 
 from DTOs.graph_query_DTOs import Entity_Triples_DTO, Entity_Table_DTO
+from DTOs.linking_DTOs import Linked_Data_DTO
 
 import copy
 from pathlib import Path
-from rdflib import Graph, Literal, URIRef, BNode, RDF, RDFS
+from rdflib import Graph, Literal
 import re
+
+from langchain.vectorstores import Chroma
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import HuggingFaceEmbeddings
 
 config_file_path = 'graph_query_service/Config/Config.ini'
 app_config_file_path = 'App_config.ini'
+
 
 # check if required config files exist
 if not Path(config_file_path).is_file() or not Path(app_config_file_path).is_file:
@@ -31,6 +37,7 @@ config = read_config_file(config_file_path)
 # Saving config vars
 # Query entity data
 entity_prefix = config['KNOWLEDGE_GRAPH']['entity_prefix']
+property_prefix = config['KNOWLEDGE_GRAPH']['property_prefix']
 entity_query_headers = dict(config.items('ENTITY_QUERY_HEADERS'))
 entity_query_payload = dict(config.items('ENTITY_QUERY_PAYLOAD'))
 entity_query_params = dict(config.items('ENTITY_QUERY_PARAMS'))
@@ -43,6 +50,8 @@ kg_query_params = dict(config.items('KG_QUERY_PARAMS'))
 
 # sparql queries
 labels_sparql = config['SPARQL']['labels']
+direct_triples_epo = config['SPARQL']['direct_triples_epo']
+direct_triples_spe = config['SPARQL']['direct_triples_spe']
 
 # Graph ontology UID
 ontology_prefix = config['KNOWLEDGE_GRAPH']['ontology_prefix']
@@ -75,7 +84,123 @@ else:
 app = FastAPI()
 
 ### endpoints
-@app.get('/entity/triples/{entity_UID}')
+@app.post(graph_query_service.get('entity_triples_langchain_endpoint'))
+def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=10):
+    def get_entity_direct_triples(entity_UID):
+        def get_value_from_dict(dict, key):
+            if dict.get(key) is None:
+                return key
+            else:
+                return dict.get(key)
+        
+        data = []
+        # Get direct triples in format entity, predicate, object
+        res = sparql_query_kg(direct_triples_epo, { 'uid' : entity_UID })
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Wikidata External API error getting direct triples (e, p, o). Code ' + str(res.get('code')) + " : " + res.get('text'))
+        
+        data = data + res.get('json').get('results').get('bindings')
+
+        # Get direct triples in format subject, predicate, object
+        res = sparql_query_kg(direct_triples_spe, { 'uid' : entity_UID })
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Wikidata External API error getting direct triples (s, p, e). Code ' + str(res.get('code')) + " : " + res.get('text'))
+        
+        data = data + res.get('json').get('results').get('bindings')
+        
+        print('Number of direct triples found for entity ', entity_UID, ' : ', len(data))
+
+        entity_URI = entity_prefix + entity_UID
+        entity_label = get_label(entity_UID)
+
+        unique_entities = []
+        unique_properties = []
+
+        triples_dict = { 'epo' : {}, 'spe' : {} }
+
+        for triple in data:
+            #subject: if subjct is uri with wikidata prefix and it's not saved in the unique uri list
+            subject_value = triple.get('subject').get('value')
+            if triple.get('subject').get('type') == 'uri' and entity_prefix in subject_value:
+                subject_value = subject_value.replace(entity_prefix, '')
+                if subject_value.replace(entity_prefix, '') not in unique_entities:
+                    unique_entities.append(subject_value)
+            
+            # predicate: if property not in the list
+            predicate_value = triple.get('predicate').get('value').replace(property_prefix, '')
+            if predicate_value not in unique_properties:
+                unique_properties.append(triple.get('predicate').get('value').replace(property_prefix, ''))
+
+            # object: same as subject
+            object_value = triple.get('object').get('value')
+            if triple.get('object').get('type') == 'uri' and entity_prefix in object_value:
+                object_value = object_value.replace(entity_prefix, '')
+                if object_value.replace(entity_prefix, '') not in unique_entities:
+                    unique_entities.append(object_value)
+
+            case = None
+            value = None
+            # now we will put the triples in format, we have two cases e,p,o and s,p,e
+            # To identify which kind of triples we have, we will check where is th given entity
+            if triple.get('subject').get('value') == entity_URI:
+                #  case e,p,o
+                case = 'epo'
+                value = object_value
+            elif triple.get('object').get('value') == entity_URI:
+                #  case s,p,e
+                case = 'spe'
+                value = subject_value
+
+            # Now we will group data in a dict form organized by cases
+            if triples_dict.get(case).get(predicate_value) is None:
+                triples_dict[case][predicate_value] = [value]
+            else:
+                triples_dict[case][predicate_value].append(value)
+
+        # We will ask for the required labels to cache or Wikidata
+        property_labels_dict = get_labels_from_UIDs(uids=unique_properties)
+        entity_labels_dict = get_labels_from_UIDs(uids=unique_entities)
+
+        # Now we will set data in verbalzied triples format
+
+        entity_graph = Graph()
+        # Transform e,p,o to triples format
+        for property, object in triples_dict.get('epo').items():
+            entity_graph.add( (Literal(entity_label), Literal(get_value_from_dict(property_labels_dict, property)), Literal(';'.join([get_value_from_dict(entity_labels_dict, x) for x in object]))) )
+
+        # Transform s,p,e to triples format
+        for property, object in triples_dict.get('spe').items():
+            entity_graph.add( ( Literal(';'.join([get_value_from_dict(entity_labels_dict, x) for x in object])), Literal(get_value_from_dict(property_labels_dict, property)), Literal(entity_label)) )
+
+
+        return entity_graph.serialize(format='nt').replace('\n','\n').replace(' .','')
+
+    
+    # Get entity direct triples
+    model_name = "sentence-transformers/all-mpnet-base-v2"
+    model_kwargs = {'device': 'cpu'}
+    encode_kwargs = {'normalize_embeddings': False}
+    embedding = HuggingFaceEmbeddings(
+        model_name=model_name,
+        model_kwargs=model_kwargs,
+        encode_kwargs=encode_kwargs
+    )
+
+    text_splitter = CharacterTextSplitter(chunk_size=1,chunk_overlap=0, separator="\n")
+    chunks = []
+
+    for entity in entities.entities:
+        direct_triples = get_entity_direct_triples(entity.get('UID'))
+        chunks = chunks + text_splitter.create_documents(texts=[direct_triples], metadatas=[{'source':'direct triples of entity : ' + entity.get('UID')}])
+    
+    vectordb = Chroma.from_documents(
+    documents=chunks, # nuestros chunks
+    embedding=embedding, # Modulo de embeddings para la transformación de chunk a embedding
+    )
+
+    return Entity_Triples_DTO(triples = '\n'.join([x.page_content for x in vectordb.similarity_search(question,k=int(k))]))
+
+@app.get( graph_query_service.get('entity_triples_endpoint') + '{entity_UID}')
 def get_entity_triples(entity_UID):
     try:
         global entity_prefix
@@ -141,7 +266,7 @@ def get_entity_triples(entity_UID):
 
 
 # Get entity table
-@app.get('/entity/table/{entity_UID}')
+@app.get(graph_query_service.get('entity_table_endpoint') + '{entity_UID}')
 def get_entity_table(entity_UID : str):
     try:    
         global entity_prefix
@@ -259,15 +384,51 @@ def filter_properties_by_label(label:str, property_uid:str):
 
     return True
 
-def get_labels_from_UIDs(uids : List):
+def get_labels_from_UIDs(uids : List, prefix : str = 'wd:'):
     try:
         global labels_map
         global labels_map_path
+        global entity_prefix
+
+        sub_labels_map = {}
+        query_list = []
 
         # Obtain each requested label using the get label method
         sub_labels_map = {}
         for uid in uids:
-            sub_labels_map[uid] = get_label(uid)
+            # check if it's a valid Wikidata UID, if not return uid
+            if not re.match(r'^(Q|P)\d+$', uid):
+                sub_labels_map[uid] = uid
+            
+            # Check if the label is in the list of elements with no label, if it does, return the URI
+            elif uid in labels_map.get('no_label_elements'):
+                sub_labels_map[uid] = entity_prefix + uid
+
+            # Check if the label is already registered in the cache
+            elif labels_map.get(uid) is not None:
+                sub_labels_map[uid] = labels_map.get(uid)
+
+            # Any other case we will add it to query list
+            else:
+                query_list.append(uid)
+        # now we will query for the query list elements labels in groups of n
+        res = sparql_query_kg(sparql=labels_sparql, sparql_params={ 
+            'uids' : ' '.join([prefix + x for x in query_list])
+        })
+
+        if res.get('code') != 200:
+            print('Wikiata returned an error while obtaining the labels. Error: ' + res.get('text'))
+            raise HTTPException(status_code=502, detail='Wikiata returned an error while obtaining the labels. Error: ' + res.get('text'))
+
+        for element in res.get('json').get('results').get('bindings'):
+            uid = element.get('item').get('value').replace(entity_prefix,'')
+            # if by any reason it return an empty label return uri and ban element as no label
+            if len(element.get('itemLabel').get('value')) == 0: 
+                sub_labels_map[uid] = entity_prefix + uid
+                labels_map['no_label_elements'].append(uid)
+            else:
+                sub_labels_map[uid] = element.get('itemLabel').get('value')
+                labels_map[uid] = element.get('itemLabel').get('value')
 
         # update the cache
         save_json(filename=labels_map_path, data=labels_map)
@@ -393,7 +554,7 @@ def sparql_query_kg(sparql: str, sparql_params:dict):
         kg_query_params = {'format' : 'json'}
 
         xml = "query=" + sparql_query
-        
+
         # query wikidata
         res = query_api('post', query_endpoint, {'content-type':'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent' : 'SubgraphBot/0.1, bot for obtention of class subgraphs (javiersorucol1@upb.edu)' }, kg_query_params, xml, paylod_type='data')
 
