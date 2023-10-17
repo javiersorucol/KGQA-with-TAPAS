@@ -85,7 +85,7 @@ app = FastAPI()
 
 ### endpoints
 @app.post(graph_query_service.get('entity_triples_langchain_endpoint'))
-def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=10):
+def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
     def get_entity_direct_triples(entity_UID):
         def get_value_from_dict(dict, key):
             if dict.get(key) is None:
@@ -117,8 +117,10 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=10):
         
         #print('Number of direct triples found for entity ', entity_UID, ' : ', len(data))
 
+        #print(data)
+
         entity_URI = entity_prefix + entity_UID
-        entity_label = get_label(entity_UID)
+        entity_label = get_labels_from_UIDs([entity_UID]).get(entity_UID)
 
         one_hop_entities = []
         unique_entities = []
@@ -229,7 +231,9 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=10):
     embedding=embedding, # Modulo de embeddings para la transformación de chunk a embedding
     )
 
-    return Entity_Triples_DTO(triples = '\n'.join([x.page_content for x in vectordb.similarity_search(question,k=int(k))]))
+    selected_triples = vectordb.similarity_search(question,k=len(entities.entities)*int(k))
+    print('SELECTED TRIPLES: ', selected_triples)
+    return Entity_Triples_DTO(triples = '\n'.join([x.page_content for x in selected_triples]))
 
 @app.get( graph_query_service.get('entity_triples_endpoint') + '{entity_UID}')
 def get_entity_triples(entity_UID):
@@ -423,7 +427,6 @@ def get_labels_from_UIDs(uids : List, prefix : str = 'wd:'):
 
         sub_labels_map = {}
         query_list = []
-
         # Obtain each requested label using the get label method
         sub_labels_map = {}
         for uid in uids:
@@ -442,24 +445,26 @@ def get_labels_from_UIDs(uids : List, prefix : str = 'wd:'):
             # Any other case we will add it to query list
             else:
                 query_list.append(uid)
-        # now we will query for the query list elements labels in groups of n
-        res = sparql_query_kg(sparql=labels_sparql, sparql_params={ 
-            'uids' : ' '.join([prefix + x for x in query_list])
-        })
+        
+        if len(query_list) > 0:
+            # now we will query for the query list elements labels in groups of n
+            res = sparql_query_kg(sparql=labels_sparql, sparql_params={ 
+                'uids' : ' '.join([prefix + x for x in query_list])
+            })
 
-        if res.get('code') != 200:
-            print('Wikiata returned an error while obtaining the labels. Error: ' + res.get('text'))
-            raise HTTPException(status_code=502, detail='Wikiata returned an error while obtaining the labels. Error: ' + res.get('text'))
+            if res.get('code') != 200:
+                print('Wikidata returned an error while obtaining the labels. Error: ' + res.get('text') + '\n' + res)
+                raise HTTPException(status_code=502, detail='Wikidata returned an error while obtaining the labels. Error: ' + res.get('text'))
 
-        for element in res.get('json').get('results').get('bindings'):
-            uid = element.get('item').get('value').replace(entity_prefix,'')
-            # if by any reason it return an empty label return uri and ban element as no label
-            if len(element.get('itemLabel').get('value')) == 0: 
-                sub_labels_map[uid] = entity_prefix + uid
-                labels_map['no_label_elements'].append(uid)
-            else:
-                sub_labels_map[uid] = element.get('itemLabel').get('value')
-                labels_map[uid] = element.get('itemLabel').get('value')
+            for element in res.get('json').get('results').get('bindings'):
+                uid = element.get('item').get('value').replace(entity_prefix,'')
+                # if by any reason it return an empty label return uri and ban element as no label
+                if len(element.get('itemLabel').get('value')) == 0: 
+                    sub_labels_map[uid] = entity_prefix + uid
+                    labels_map['no_label_elements'].append(uid)
+                else:
+                    sub_labels_map[uid] = element.get('itemLabel').get('value')
+                    labels_map[uid] = element.get('itemLabel').get('value')
 
         # update the cache
         save_json(filename=labels_map_path, data=labels_map)
@@ -470,52 +475,6 @@ def get_labels_from_UIDs(uids : List, prefix : str = 'wd:'):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while obtaining labels. Error: ' + str(e))
-    
-def get_label(uid, prefix : str='wd'):
-    try:
-        global labels_map
-        global entity_prefix
-
-        # check if it's a valid UID, if not return uid
-        if not re.match(r'^(Q|P)\d+$', uid):
-            return uid
-
-        # Check if the label is in the list of elements with no label, if it does, return the URI
-        if uid in labels_map.get('no_label_elements'):
-            return entity_prefix + uid
-        
-        # Check if the label is already registered in the cache, if it does, return the cached label
-        elif labels_map.get(uid) is not None:
-            return labels_map.get(uid)
-        
-        # If the label is not yet registered, we will query wikidata for the label
-        res = sparql_query_kg(sparql=labels_sparql, sparql_params={ 
-            'prefix' : prefix,
-            'uid' : uid
-        })
-        if res.get('code') != 200:
-            print('Wikiata returned an error while obtaining the label for the uid: '+ uid +'. Error: ' + res.get('text'))
-            raise HTTPException(status_code=502, detail='Wikiata returned an error while obtaining the label for the uid: '+ uid +'. Error: ' + res.get('text'))
-        
-        # if the result is empty, we will add this uid to the no labels list and return the uri
-        label = ''
-        if len(res.get('json').get('results').get('bindings')) == 0:
-            label = entity_prefix + uid
-            labels_map['no_label_elements'].append(uid)
-        # if not, we will store the label and return it (always grab the first label returned)
-        else:
-            label = res.get('json').get('results').get('bindings')[0].get('object').get('value')
-            labels_map[uid] = label
-
-        return label
-
-    
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        print('Unexpected error while obtaining the label for the uid: '+ uid +'. Error: ' + str(e))
-        raise HTTPException(status_code=500, detail='Unexpected error while obtaining the label for the uid: '+ uid +'. Error: ' + str(e))
 
 def list_to_str(list : List):
     # join list elements using '; ' e.g. for [1,2,3] returns '1; 2; 3'
