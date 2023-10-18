@@ -52,6 +52,7 @@ kg_query_params = dict(config.items('KG_QUERY_PARAMS'))
 labels_sparql = config['SPARQL']['labels']
 direct_triples_epo = config['SPARQL']['direct_triples_epo']
 direct_triples_spe = config['SPARQL']['direct_triples_spe']
+one_hop_triples_query = config['SPARQL']['one_hop_triples_query']
 
 # Graph ontology UID
 ontology_prefix = config['KNOWLEDGE_GRAPH']['ontology_prefix']
@@ -86,13 +87,14 @@ app = FastAPI()
 ### endpoints
 @app.post(graph_query_service.get('entity_triples_langchain_endpoint'))
 def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
+    def get_value_from_dict(dict, key):
+        if dict.get(key) is None:
+            return key
+        else:
+            return dict.get(key)
+
     def get_entity_direct_triples(entity_UID):
-        def get_value_from_dict(dict, key):
-            if dict.get(key) is None:
-                return key
-            else:
-                return dict.get(key)
-        
+
         print('Getting direct triples for entity ', entity_UID)
         data = []
         # Get direct triples in format entity, predicate, object
@@ -139,7 +141,7 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
             # predicate: if property not in the list
             predicate_value = triple.get('predicate').get('value').replace(property_prefix, '')
             if predicate_value not in unique_properties:
-                unique_properties.append(triple.get('predicate').get('value').replace(property_prefix, ''))
+                unique_properties.append(predicate_value)
 
             # object: same as subject
             object_value = triple.get('object').get('value')
@@ -193,6 +195,68 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
 
         return (one_hop_entities, entity_graph.serialize(format='nt').replace('\n','\n').replace(' .',''))
 
+    def get_one_hop_triples(uids):
+        # we get direct e,p,o triples for each one hop entity
+        global one_hop_triples_query
+        # If no uids are provided return empty string
+        if len(uids) == 0:
+            return ''
+
+        # query for triples
+        res = sparql_query_kg(one_hop_triples_query, { 'uids' : ' '.join([ 'wd:' + x for x in uids]) })
+
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='Wikidata External API error getting one hop triples. Code ' + str(res.get('code')) + " : " + res.get('text'))
+
+            
+        print('Getting one-hop triples for ', len(uids), ' one-hop entities')
+
+        unique_entities = []
+        unique_properties = []
+        triples_dict = {} ## Format { subject: { property: [objects], .... }}
+
+        if res.get('json').get('results') is not None and res.get('json').get('results').get('bindings') is not None:
+            for triple in res.get('json').get('results').get('bindings'):
+                # Save subject value es unique entity
+                subject_value = triple.get('subject').get('value')
+                if triple.get('subject').get('type') == 'uri' and entity_prefix in subject_value:
+                    subject_value = subject_value.replace(entity_prefix, '')
+                    if subject_value not in unique_entities:
+                        unique_entities.append(subject_value)
+                
+                # predicate: if property not in the list
+                predicate_value = triple.get('predicate').get('value').replace(property_prefix, '')
+                if predicate_value not in unique_properties:
+                    unique_properties.append(predicate_value)
+
+                # object: same as subject
+                object_value = triple.get('object').get('value')
+                if triple.get('object').get('type') == 'uri' and entity_prefix in object_value:
+                    object_value = object_value.replace(entity_prefix, '')
+                    if object_value not in unique_entities:
+                        unique_entities.append(object_value)
+
+                # add data to dict
+                if triples_dict.get(subject_value) is None:
+                    triples_dict[subject_value] = {}
+                
+                if triples_dict.get(subject_value).get(predicate_value) is None:
+                    triples_dict[subject_value][predicate_value] = [object_value]
+                elif object_value not in triples_dict.get(subject_value).get(predicate_value):
+                    triples_dict.get(subject_value).get(predicate_value).append(object_value)
+
+        property_labels_dict = get_labels_from_UIDs(uids=unique_properties)
+        entity_labels_dict = get_labels_from_UIDs(uids=unique_entities)
+
+        entity_graph = Graph()
+        
+        for subject, data in triples_dict.items():
+            for predicate, objects in data.items():
+                entity_graph.add( (Literal(get_value_from_dict(entity_labels_dict, subject)), Literal(get_value_from_dict(property_labels_dict, predicate)), Literal(';'.join([get_value_from_dict(entity_labels_dict, x) for x in objects]))) )
+
+        return entity_graph.serialize(format='nt').replace('\n','\n').replace(' .','')
+
+        
     
     # Get entity direct triples
     unique_entities = []
@@ -216,15 +280,16 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
         chunks = chunks + text_splitter.create_documents(texts=[direct_triples], metadatas=[{'source':'direct triples of entity : ' + entity.get('UID')}])
     
     print('We have ', len(chunks), ' triples from question entities')
-    # unique_entities = list(set(unique_entities))
-    # print('We have found ', len(unique_entities), ' one hope entities')
-    # # get data for one hop entities
-    # for one_hop_entity in unique_entities:
-    #     x, direct_triples = get_entity_direct_triples(one_hop_entity)
-    #     print('Number of unique proprties directly related to entity ', one_hop_entity, ' : ', len(direct_triples))
-    #     chunks = chunks + text_splitter.create_documents(texts=[direct_triples], metadatas=[{'source':'direct triples of one hop entity : ' + one_hop_entity}])
+    unique_entities = list(set(unique_entities))
+    print('We have found ', len(unique_entities), ' one hope entities')
+    # get data for one hop entities
+    
+    one_hop_triples = text_splitter.create_documents(texts=[get_one_hop_triples(unique_entities)], metadatas=[{'source':'one hop triples'}])
+    print('We have ', len( one_hop_triples ), ' one hop triples.')
 
-    # print('We have ', len(chunks), ' total triples (question entities + one hope entities)')
+    chunks = chunks + one_hop_triples
+
+    print('We have ', len(chunks), ' total triples (question entities + one hope entities)')
 
     vectordb = Chroma.from_documents(
     documents=chunks, # nuestros chunks
