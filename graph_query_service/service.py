@@ -271,6 +271,7 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
 
     text_splitter = CharacterTextSplitter(chunk_size=1,chunk_overlap=0, separator="\n")
     chunks = []
+    text_triples = ''
 
     # get data for all found entities
     for entity in entities.entities:
@@ -278,13 +279,16 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
         print('Number of unique properties directly related to entity ', entity.get('UID'), ' : ', len(direct_triples))
         unique_entities = unique_entities + entity_unique_entities
         chunks = chunks + text_splitter.create_documents(texts=[direct_triples], metadatas=[{'source':'direct triples of entity : ' + entity.get('UID')}])
-    
+        text_triples = text_triples + '\n' + direct_triples
+
     print('We have ', len(chunks), ' triples from question entities')
     unique_entities = list(set(unique_entities))
     print('We have found ', len(unique_entities), ' one hope entities')
     # get data for one hop entities
     
-    one_hop_triples = text_splitter.create_documents(texts=[get_one_hop_triples(unique_entities)], metadatas=[{'source':'one hop triples'}])
+    one_hop_data = get_one_hop_triples(unique_entities)
+    text_triples = text_triples + '\n' + one_hop_data
+    one_hop_triples = text_splitter.create_documents(texts=[one_hop_data], metadatas=[{'source':'one hop triples'}])
     print('We have ', len( one_hop_triples ), ' one hop triples.')
 
     chunks = chunks + one_hop_triples
@@ -295,6 +299,8 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
     documents=chunks, # nuestros chunks
     embedding=embedding, # Modulo de embeddings para la transformación de chunk a embedding
     )
+
+    save_json('multihop_1_triples.json', {'triples' : text_triples })
 
     selected_triples = vectordb.similarity_search(question,k=len(entities.entities)*int(k))
     print('SELECTED TRIPLES: ', selected_triples)
