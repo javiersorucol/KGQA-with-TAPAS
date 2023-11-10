@@ -21,7 +21,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def query_open_ai(prompt_template : str, prompt_params: dict, max_tokens : int=100):
     try:
         prompt = Template(prompt_template).substitute(prompt_params)
-        gpt_model = 'gpt-4'
+        gpt_model = 'gpt-4-1106-preview'
         response = openai.ChatCompletion.create(
             model = gpt_model,
             messages = [{'role':'user', 'content':prompt}],
