@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 class Entity_Table_DTO(BaseModel):
@@ -6,3 +7,4 @@ class Entity_Table_DTO(BaseModel):
 
 class Entity_Triples_DTO(BaseModel):
     triples : str
+    data_corpus: Optional[str] = None

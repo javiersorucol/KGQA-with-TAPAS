@@ -304,7 +304,7 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
 
     selected_triples = vectordb.similarity_search(question,k=len(entities.entities)*int(k))
     print('SELECTED TRIPLES: ', selected_triples)
-    return Entity_Triples_DTO(triples = '\n'.join([x.page_content for x in selected_triples]))
+    return Entity_Triples_DTO(triples = '\n'.join([x.page_content for x in selected_triples]), data_corpus = text_triples)
 
 @app.get( graph_query_service.get('entity_triples_endpoint') + '{entity_UID}')
 def get_entity_triples(entity_UID):
@@ -348,8 +348,8 @@ def get_entity_triples(entity_UID):
         # Construct the triples using a rdflib graph
         entity_graph = Graph()
         # Add base properties to the Graph
-        entity_graph.add(( Literal('urn:'+label),  Literal('urn:description'), Literal(description)))
-        entity_graph.add(( Literal('urn:'+label),  Literal('urn:aliases'), Literal(aliases)))
+        entity_graph.add(( Literal(label),  Literal('description'), Literal(description)))
+        entity_graph.add(( Literal(label),  Literal('aliases'), Literal(aliases)))
         # for each filtered property
         for key, values_list in filtered_properties.items():
             # if there's an available mapping value, use the value in any other case keep the value of the uri table
@@ -360,7 +360,7 @@ def get_entity_triples(entity_UID):
             # Do not work if the prperty label contains substring category or commons as they have no value for our table
             if filter_properties_by_label(label=property_label, property_uid=key):
                 # Add the triple
-                entity_graph.add(( Literal('urn:'+label), Literal('urn:' + property_label), Literal(list_to_str(labels)) ))
+                entity_graph.add(( Literal(label), Literal(property_label), Literal(list_to_str(labels)) ))
 
         return Entity_Triples_DTO(triples = entity_graph.serialize(format='nt'))
     
