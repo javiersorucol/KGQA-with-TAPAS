@@ -10,7 +10,7 @@ The final result is composed of five services:
 - Main Service
 
 ## Instalation
-To install this project the required libraries are specicified in the requirements.txt file:
+We work with python 3.9, to install this project the required libraries are specicified in the requirements.txt file:
 ```
 $ pip install -r requirements.txt
 ```

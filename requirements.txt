@@ -11,10 +11,11 @@ python-dotenv==1.0.0
 rdflib==7.0.0
 tensorflow_probability==0.22.0
 numpy==1.23.5
-typing-extensions==4.6.0
+typing-extensions==4.5.0
 langchain==0.0.315
 tiktoken==0.5.1
-pypika==0.47.4
+pypika==0.48.9
+pybind11==2.11.1
 hnswlib==0.4.0
 chromadb==0.4.14
 sentence-transformers==2.2.2
