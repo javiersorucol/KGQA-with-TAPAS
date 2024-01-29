@@ -14,6 +14,8 @@ from utils.OpenAI_utils import query_open_ai
 from pathlib import Path
 import json
 
+from Levenshtein import distance
+
 config_file_path = 'linking_service/Config/Config.ini'
 app_config_file_path = 'App_config.ini'
 
@@ -161,6 +163,9 @@ def get_falcon_response(question: Question_DTO):
         raise HTTPException(status_code=500, detail='Unexpected error on server while working with FALCON 2.0 API. Error:' + str(e))
 
 def search_entity_with_wikidata_service(label:str):
+    def sort_by_levenshtein(data, label):
+        data.sort(key=lambda x: distance(x.get('display').get('label').get('value') , label))
+
     try:
         # ask wikidata search engine to get the information for the given label
         wikidata_search_engine_params['search'] = label
@@ -172,7 +177,8 @@ def search_entity_with_wikidata_service(label:str):
         # if no results were returned of the success flag is set to 0 return None
         if len(res.get('json').get('search')) == 0 or res.get('json').get('success') == 0:
             return None
-
+        
+        sort_by_levenshtein(res.get('json').get('search'), label)
         return { 'UID': res.get('json').get('search')[0].get('id'), 'label': label }
     
     except HTTPException as e:
