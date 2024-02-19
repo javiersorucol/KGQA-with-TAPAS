@@ -8,7 +8,7 @@ from utils.Configuration_utils import read_config_file
 
 from DTOs.linking_DTOs import Linked_Data_DTO,  Question_DTO
 
-from utils.Request_utils import query_api
+from utils.Request_utils import query_api, query_graphDB
 from utils.OpenAI_utils import query_open_ai
 
 from pathlib import Path
@@ -57,6 +57,8 @@ def link_data_main(question : Question_DTO):
     # prompt in order to reduce the number of required prompts in the pipeline, the main_entity_prompt_template contains the chosen method prompt as one of
     # the instructions of the prompt, then it will only keep the main entity of the question
     global main_entity_prompt_template
+
+    print(query_graphDB('select * where {  	?s ?p ?o . } limit 100 '))
     
     # We will call the chosen method (gpt v1) and run it with the main template
     return link_data_with_OpenAI(question=question, prompt_template=main_entity_prompt_template)

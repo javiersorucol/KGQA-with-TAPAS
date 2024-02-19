@@ -54,7 +54,20 @@ linking_service = dict(app_config.items('LINKING_SERVICE'))
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
 answer_service = dict(app_config.items('ANSWER_SERVICE'))
 main_service = dict(app_config.items('MAIN_SERVICE'))
+graphdb = dict(app_config.items('GRAPHDB'))
 
+def query_graphDB(query:str):
+    try:
+        global graphdb
+
+        url = get_service_url(graphdb, 'query_endpoint')
+        res = query_api('get', url, { 'Accept' : 'application/sparql-results+json' }, { 'query' : query }, {} )
+
+        return res
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying translation service: ' + str(e))
+    
 def translate(query:str, lang:str):
     # to translate we will query the translation service
     try:
