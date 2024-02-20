@@ -20,18 +20,17 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def query_open_ai(prompt_template : str, prompt_params: dict, max_tokens : int=100):
     try:
+        client = openai.OpenAI()
         prompt = Template(prompt_template).substitute(prompt_params)
-        gpt_model = 'gpt-4'
-        response = openai.ChatCompletion.create(
-            model = gpt_model,
-            messages = [{'role':'user', 'content':prompt}],
-            max_tokens = max_tokens,
-            n = 1,
-            stop = None,
-            temperature = 0
+        model = 'gpt-4-1106-preview'
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[{'role' : 'user', 'content' : prompt}],
+            temperature = 0,
+            max_tokens=max_tokens,
         )
 
-        answer = response.get('choices')[0].get('message').get('content')
+        answer = completion.choices[0].message.content
         return answer
 
     except Exception as e:

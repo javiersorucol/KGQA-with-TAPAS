@@ -4,6 +4,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from fastapi import FastAPI, HTTPException
 
+from string import Template
+
 from utils.Configuration_utils import read_config_file
 
 from DTOs.linking_DTOs import Linked_Data_DTO,  Question_DTO
@@ -14,8 +16,13 @@ from utils.OpenAI_utils import query_open_ai
 from pathlib import Path
 import json
 
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain.embeddings import HuggingFaceEmbeddings
+
 from Levenshtein import distance
 
+linking_data_path = 'linking_service/Data/Linking_Data/linked_entities/entities_index'
 config_file_path = 'linking_service/Config/Config.ini'
 app_config_file_path = 'App_config.ini'
 
@@ -45,11 +52,88 @@ selection_prompt_template = config['OPENAI']['selection_prompt_template'].replac
 wikidata_search_engine_url = config['WIKIDATA_SEARCH_ENGINE']['url']
 wikidata_search_engine_params = dict(config.items('WIKIDATA_SEARCH_ENGINE_PARAMS'))
 
+graph_elements_query = config['GRAPHDB_QUERIES']['graph_elements_query']
+description_property = config['GRAPHDB_QUERIES']['description_property']
+class_property = config['GRAPHDB_QUERIES']['class_property']
+prefix = config['GRAPHDB_QUERIES']['prefix']
+type_prefix = config['GRAPHDB_QUERIES']['type_prefix']
+
 # Reding the app configurations to get the service configuration
 app_config = read_config_file(app_config_file_path)
 linking_service = dict(app_config.items('LINKING_SERVICE'))
 
+# Check if the vector store used for entity linking with GRAPHDB exists
+
+vector_store = None
+
+# Let's initialize our HuggingFace embeddings model
+model_name = "sentence-transformers/all-mpnet-base-v2"
+model_kwargs = {'device': 'cpu'}
+encode_kwargs = {'normalize_embeddings': False}
+embeddings = HuggingFaceEmbeddings(
+    model_name=model_name,
+    model_kwargs=model_kwargs,
+    encode_kwargs=encode_kwargs
+)
+
+if not Path(linking_data_path).exists():
+    # if the data does not exists, we will create a vector store querying the graph
+    # Let's query the graph
+    entities_query_template = Template(graph_elements_query)
+    raw_data = query_graphDB(entities_query_template.substitute({
+        'description_property' : description_property,
+        'class_property' : class_property,
+        'prefix' : prefix
+    }))
+
+    # Now we will set a format to store each entity information:
+    #       URI: Entity URI
+    #       label: Entity label
+    #       description: entity description
+    #       type: entity class or type
+    entity_data = []
+
+    for entity in raw_data.get('json').get('results').get('bindings'):
+        entity_info = f"""
+        URI: {entity.get('item').get('value')}
+        label: {entity.get('itemLabel').get('value')}
+        description: {entity.get('description').get('value')}
+        type : {entity.get('type').get('value').replace(type_prefix,'')} 
+        """
+        entity_data.append(entity_info)
+
+    # Let's start by creating chunks to store we will use as separator: \n~\n
+    text_splitter = CharacterTextSplitter(chunk_size=1,chunk_overlap=0, separator="\n~\n")
+    chunks = text_splitter.create_documents(texts=['\n~\n'.join(entity_data)], metadatas=[{'source':'GraphDB'}])
+
+    # Let's create a Faiss Vector Store using these chunks
+    vector_store = FAISS.from_documents(
+        documents=chunks, # nuestros chunks
+        embedding=embeddings.embed_query, # Modulo de embeddings para la transformación de chunk a embedding
+    )
+
+    print('Entities index created')
+    # Now We will save the vector store
+    vector_store.save_local(linking_data_path)
+
+else:
+    # If index exists load it
+    vector_store = FAISS.load_local(linking_data_path, embeddings.embed_query)
+    print('Entities index loaded')
+
+# Initialize retrievers
+# Faiss retriever
+faiss_retriever = vector_store.as_retriever(search_kwargs={"k": 1})
+
 app = FastAPI()
+
+def link_with_embeddings_to_graphdb(question : Question_DTO):
+    # We will use the vector store to retrieve data related to the question
+    #data = vector_store.similarity_search('What is the Death Star?')
+    data = faiss_retriever.invoke(question.text)[0].page_content.split('\n')
+    uri = data[0].replace('URI:', '').strip()
+    label = data[1].replace('label:', '').strip()
+    return Linked_Data_DTO(entities = [{'UID':uri, 'label':label}])
 
 @app.post(linking_service.get('link_main_endpoint'))
 def link_data_main(question : Question_DTO):
@@ -57,11 +141,10 @@ def link_data_main(question : Question_DTO):
     # prompt in order to reduce the number of required prompts in the pipeline, the main_entity_prompt_template contains the chosen method prompt as one of
     # the instructions of the prompt, then it will only keep the main entity of the question
     global main_entity_prompt_template
-
-    print(query_graphDB('select * where {  	?s ?p ?o . } limit 100 '))
     
     # We will call the chosen method (gpt v1) and run it with the main template
-    return link_data_with_OpenAI(question=question, prompt_template=main_entity_prompt_template)
+    return link_with_embeddings_to_graphdb(question=question)
+    #return link_data_with_OpenAI(question=question, prompt_template=main_entity_prompt_template)
 
 @app.post(linking_service.get('link_endpoint_gpt_v1'))
 def link_data_with_OpenAI(question : Question_DTO, prompt_template : str = ner_prompt_template):
