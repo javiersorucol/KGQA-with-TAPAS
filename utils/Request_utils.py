@@ -54,7 +54,20 @@ linking_service = dict(app_config.items('LINKING_SERVICE'))
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
 answer_service = dict(app_config.items('ANSWER_SERVICE'))
 main_service = dict(app_config.items('MAIN_SERVICE'))
+graphdb = dict(app_config.items('GRAPHDB'))
 
+def query_graphDB(query:str):
+    try:
+        global graphdb
+
+        url = get_service_url(graphdb, 'query_endpoint')
+        res = query_api('get', url, { 'Accept' : 'application/sparql-results+json' }, { 'query' : query }, {} )
+
+        return res
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying translation service: ' + str(e))
+    
 def translate(query:str, lang:str):
     # to translate we will query the translation service
     try:
@@ -115,6 +128,21 @@ def get_entity_triples_lang_chain(entities : Linked_Data_DTO, question):
         global graph_query_service
         
         url = get_service_url(graph_query_service, 'entity_triples_langchain_endpoint')
+        res = query_api('post', url, {}, {'question':question}, entities)
+
+        return res
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying Graph Query service for the entity triples: ' + str(e))
+    
+def get_entity_triples_graphdb(entities : Linked_Data_DTO, question):
+    try:
+        global graph_query_service
+        
+        url = get_service_url(graph_query_service, 'entity_triples_localdb_endpoint')
         res = query_api('post', url, {}, {'question':question}, entities)
 
         return res
@@ -203,6 +231,25 @@ def ask_tapas(table : dict, question : str):
     except Exception as e:
         raise HTTPException(status_code=500, detail='Unexpected error while querying answer service for tapas answer: ' + str(e))
 
+
+def link_graph_entities_graphdb(query:str):
+    # to link to graph elements we will query the linking service
+    try:
+        global linking_service
+
+        payload = { 'text' : query }
+
+        url = get_service_url(linking_service, 'link_graph_db')
+        res = query_api('post', url, {}, {}, payload)
+    
+        return res
+
+    except HTTPException as e:
+        raise e
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while querying linking service: ' + str(e))
+    
 
 def link_graph_elements_gpt_v1(query:str):
     # to link to graph elements we will query the linking service

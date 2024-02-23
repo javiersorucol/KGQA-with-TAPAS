@@ -4,9 +4,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from fastapi import FastAPI, HTTPException
 from string import Template
+import validators
 from typing import List
 
-from utils.Request_utils import query_api
+from utils.Request_utils import query_api, query_graphDB
 from utils.Configuration_utils import read_config_file
 from utils.Json_utils import read_json, save_json
 
@@ -18,9 +19,12 @@ from pathlib import Path
 from rdflib import Graph, Literal
 import re
 
-from langchain.vectorstores import Chroma
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
+
+from langchain_community.vectorstores import FAISS
+from langchain_community.retrievers import BM25Retriever
+from langchain.retrievers import EnsembleRetriever
 
 config_file_path = 'graph_query_service/Config/Config.ini'
 app_config_file_path = 'App_config.ini'
@@ -63,6 +67,11 @@ banned_words = config.get('KNOWLEDGE_GRAPH', 'banned_words').split()
 banned_data_path = config['SERVER_PARAMS']['banned_data_path']
 labels_map_path = config['SERVER_PARAMS']['labels_map_path']
 
+# GraphDB queries
+entities_data_query = config['GRAPH_DB_QUERIES']['entities_data_query']
+prefix = config['GRAPH_DB_QUERIES']['prefix']
+label_query = config['GRAPH_DB_QUERIES']['label_query']
+
 # Reding the service configurations
 app_config = read_config_file(app_config_file_path)
 graph_query_service = dict(app_config.items('GRAPH_QUERY_SERVICE'))
@@ -82,9 +91,92 @@ if not os.path.exists(labels_map_path):
 else:
     labels_map = read_json(labels_map_path)
 
+
+# Initialize the embeddings
+model_name = "sentence-transformers/all-mpnet-base-v2"
+model_kwargs = {'device': 'cpu'}
+encode_kwargs = {'normalize_embeddings': False}
+embedding = HuggingFaceEmbeddings(
+    model_name=model_name,
+    model_kwargs=model_kwargs,
+    encode_kwargs=encode_kwargs
+)
+text_splitter = CharacterTextSplitter(chunk_size=1,chunk_overlap=0, separator="\n")
+
 app = FastAPI()
 
 ### endpoints
+
+@app.post(graph_query_service.get('entity_triples_localdb_endpoint'))
+def get_graphdb_triples(question : str, linked_data : Linked_Data_DTO, k:int=15):
+    def get_value(type:str, val:str):
+        #function to remove prefixes and query labels if necesary
+        # if value is not uri return
+        if type != 'uri':
+            return val
+        else:
+            # remove rdf rdfs and voc prefixes
+            val = val.replace('http://www.w3.org/1999/02/22-rdf-syntax-ns#', '').replace('http://www.w3.org/2000/01/rdf-schema#','').replace('https://swapi.co/vocabulary/','').replace('<','').replace('>','')
+            # if it is still an url, we will query a label
+            if validators.url(val):
+                label_template = Template(label_query)
+                res = query_graphDB(label_template.substitute({ 'prefix' : prefix, 'uri' : f'<{val}>' }))
+                if res.get('code') != 200:
+                    raise HTTPException(status_code=502, detail=f'GraphDB error getting label for {val}. Code ' + str(res.get('code')) + " : " + res.get('text'))
+                
+                return res.get('json').get('results').get('bindings')[0].get('sLabel').get('value')
+            else:
+                return val
+
+    try:
+        # First we will  query data for the related queries
+        entities_uris = []
+        for entity in linked_data.entities:
+            entities_uris.append('(<' + entity.get('UID') + '>)')
+        
+        entities_template = Template(entities_data_query)
+        res = query_graphDB(entities_template.substitute({ 'prefix' : prefix, 'entities' : ' '.join(entities_uris) }))
+        if res.get('code') != 200:
+            raise HTTPException(status_code=502, detail='GraphDB error getting triples. Code ' + str(res.get('code')) + " : " + res.get('text'))
+
+        res = res.get('json').get('results').get('bindings')
+
+        triples = []
+
+        for result in res:
+            triple = []
+            for key, value in result.items():
+                triple.append(get_value(type=value.get('type'), val=value.get('value')))
+
+            triples.append(' '.join(triple))
+        
+        # We split the data into chunks
+        triples = '\n'.join(triples)
+        chunks = text_splitter.create_documents(texts=[triples], metadatas=[{'source':'triples' }])
+
+        # We initialize the RAG retrievers
+        bm25_retriever = BM25Retriever.from_documents(
+            documents=chunks
+        )
+
+        bm25_retriever.k = k
+
+        faiss_vectorstore = FAISS.from_documents(
+            documents=chunks, 
+            embedding=embedding
+        )
+
+        faiss_retriever = faiss_vectorstore.as_retriever(search_kwargs={"k": k})
+
+        ensemble_retriever = EnsembleRetriever(
+            retrievers=[bm25_retriever, faiss_retriever], weights=[0.5, 0.5]
+        )
+
+        return Entity_Triples_DTO(triples= '\n'.join([x.page_content for x in ensemble_retriever.invoke(question)]), data_corpus=triples)    
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail='Unexpected error while generating entity triples from GraphDB. Error: ' + str(e))
+
 @app.post(graph_query_service.get('entity_triples_langchain_endpoint'))
 def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
     def get_value_from_dict(dict, key):
@@ -260,16 +352,6 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
     
     # Get entity direct triples
     unique_entities = []
-    model_name = "sentence-transformers/all-mpnet-base-v2"
-    model_kwargs = {'device': 'cpu'}
-    encode_kwargs = {'normalize_embeddings': False}
-    embedding = HuggingFaceEmbeddings(
-        model_name=model_name,
-        model_kwargs=model_kwargs,
-        encode_kwargs=encode_kwargs
-    )
-
-    text_splitter = CharacterTextSplitter(chunk_size=1,chunk_overlap=0, separator="\n")
     chunks = []
     text_triples = ''
 
@@ -295,14 +377,23 @@ def get_entity_triples_lang(question:str, entities : Linked_Data_DTO, k:int=15):
 
     print('We have ', len(chunks), ' total triples (question entities + one hope entities)')
 
-    vectordb = Chroma.from_documents(
+    bm25_retriever = BM25Retriever.from_documents(
+        documents=chunks
+    )
+
+    faiss_vectorstore = FAISS.from_documents(
     documents=chunks, # nuestros chunks
     embedding=embedding, # Modulo de embeddings para la transformación de chunk a embedding
+    )
+    faiss_retriever = faiss_vectorstore.as_retriever(search_kwargs={"k": k})
+
+    ensemble_retriever = EnsembleRetriever(
+        retrievers=[bm25_retriever, faiss_retriever], weights=[0.5, 0.5]
     )
 
     save_json('multihop_1_triples.json', {'triples' : text_triples })
 
-    selected_triples = vectordb.similarity_search(question,k=len(entities.entities)*int(k))
+    selected_triples = ensemble_retriever.invoke(question,k=len(entities.entities)*int(k))
     print('SELECTED TRIPLES: ', selected_triples)
     return Entity_Triples_DTO(triples = '\n'.join([x.page_content for x in selected_triples]), data_corpus = text_triples)
 
