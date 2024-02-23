@@ -18,7 +18,7 @@ import json
 
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 from Levenshtein import distance
 
@@ -127,6 +127,7 @@ faiss_retriever = vector_store.as_retriever(search_kwargs={"k": 1})
 
 app = FastAPI()
 
+@app.post(linking_service.get('link_graph_db'))
 def link_with_embeddings_to_graphdb(question : Question_DTO):
     # We will use the vector store to retrieve data related to the question
     #data = vector_store.similarity_search('What is the Death Star?')

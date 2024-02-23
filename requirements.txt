@@ -12,7 +12,7 @@ rdflib==7.0.0
 tensorflow_probability==0.22.0
 numpy==1.23.5
 typing-extensions==4.5.0
-langchain==0.0.315
+langchain==0.1.9
 tiktoken==0.6
 pypika==0.48.9
 pybind11==2.11.1
@@ -20,7 +20,8 @@ hnswlib==0.4.0
 chromadb==0.4.14
 sentence-transformers==2.2.2
 levenshtein==0.23.0
-langchain-community== 0.0.21
+langchain-community== 0.0.22
 faiss-cpu==1.7.4
 rank_bm25==0.2.2
+validators==0.22.0
 
