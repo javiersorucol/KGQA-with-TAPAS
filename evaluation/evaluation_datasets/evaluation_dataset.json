@@ -25,7 +25,7 @@
                     ]
                 },
                 {
-                    "name": "Q462",
+                    "name": "Q22092344",
                     "entityType": "entity",
                     "label": "Star Wars",
                     "mention": "Star Wars",
@@ -44,6 +44,9 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : "Select ?movie WHERE { ?movie wdt:P179 wd:Q22092344 . ?movie wdt:P161 wd:Q37876 . ?movie wdt:P577 ?date . } ORDER BY ASC(?date) LIMIT 1"
+            },
             "answer": {
                 "answerType": "entity",
                 "answer": [
@@ -178,6 +181,9 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : "Select ?book WHERE { ?book wdt:P179 wd:Q280898 . ?book wdt:P577 ?date . } ORDER BY ASC(?date) LIMIT 1 OFFSET 1"
+            },
             "answer": {
                 "answerType": "entity",
                 "answer": [
@@ -235,6 +241,9 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : "SELECT DISTINCT ?game WHERE { ?game wdt:P179 wd:Q466530 . ?game wdt:P577 ?date . ?game wdt:P31 wd:Q7889. } ORDER BY ASC(?date) LIMIT 1 OFFSET 5"
+            },
             "answer": {
                 "answerType": "entity",
                 "answer": [
@@ -292,6 +301,9 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : "PENDING"
+            },
             "answer": {
                 "answerType": "entity",
                 "answer": [
@@ -349,6 +361,9 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : "SELECT ?book WHERE { ?book wdt:P50 wd:Q219780 . ?book wdt:P31 wd:Q47461344 .  ?book wdt:P577 ?date  } ORDER BY ASC(?date) LIMIT 1 OFFSET 2"
+            },
             "answer": {
                 "answerType": "entity",
                 "answer": [
@@ -406,6 +421,9 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : "SELECT Distinct ?place WHERE { ?place wdt:P31 wd:Q295469 . ?place wdt:P17 ?country . ?country wdt:P30 wd:Q18 } "
+            },
             "answer": {
                 "answerType": "entity",
                 "answer": [
@@ -463,10 +481,20 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : "SELECT Distinct ?movie WHERE { ?movie wdt:P31 wd:Q11424 . ?movie wdt:P57 wd:Q41148 . ?movie wdt:P577 ?date } ORDER BY ASC(?date) LIMIT 1"
+            },
             "answer": {
                 "answerType": "entity",
-                "answer": null,
-                "mention": "New York City...Melting Point"
+                "answer": [
+                    {
+                        "name": "Q2575227",
+                        "label": {
+                            "en": "Who's That Knocking at My Door"
+                        }
+                    }
+                ],
+                "mention": "Who's That Knocking at My Door"
             },
             "category": "movies",
             "complexityType": "ordinal"

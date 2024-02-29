@@ -1,5 +1,8 @@
 # KGQA with tranformer based QA methods
-The main goal of this project is to provide a pipeline capable of performing KGQA by using transformer-based QA models over the Wikidata KG in English and Spanish. The selected models are TAPAS and GPT-4. To achieve this, the pipeline needs to provide the model question-related data in an understandable format for the models (tables and text). Additionally, we've developed a GPT-based entity linker that outperforms Falcon and OpenTapioca entity linkers on the evaluation set.
+The main goal of this project is to provide a pipeline capable of performing KGQA over the Wikidata KG for English and Spanish by using RAG systems.
+For this, we've developed an LLM-based entity linker and a method to extract information from wikidata related to the question.
+
+In addition, we added an endpoint that can perform KGQA with graphdb. This method adapts our entity linker by adding a vector store with the graph entities used as an indexer.
 
 The final result is composed of five services:
 
@@ -20,11 +23,18 @@ You also need to create a file named ".env" in the root directory of the project
 OPENAI_API_KEY=sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
+To work with the GraphDB, you should also check the "App_config.ini" file and modify the ip, port, and endpoint:
+```
+[GRAPHDB]
+ip = 127.0.0.1
+port = 7200
+query_endpoint = /repositories/{graph_name}
+```
+
 ## Run the project
 To run each service use the following commands:
 
 - Translation service:
-
 ```
 $ uvicorn translation_service.service:app  --reload --log-config translation_service/Logs/log_config.ini --port 8090
 ```
@@ -52,6 +62,9 @@ $ uvicorn answer_service.service:app  --reload --log-config answer_service/Logs/
 ```
 $ uvicorn main_service.service:app  --reload --log-config main_service/Logs/log_config.ini --port 8094
 ```
+
+In addition, if you want to work with GraphDB, make sure to run it with the IP and port set in the configuration file. We recommend using the Docker version of GraphDB to run it locally.
+
 ## Evaluation
 We performed three experiments:one to evaluate entity linking tools, another to evaluate the used prompts, and one to compare the KGQA systems. All the experiments can be found in the evaluation folder and are run using a selection of "simple" questions from [QALD-9-ES](https://github.com/javiersorucol/QALD_9_ES).
 We define a simple question as a question whose resulting SPARQL only requires one triple to get an answer. The questions were also grouped by the answer type to check the performance of the systems over different types of questions (singular, multiple, boolean, and aggregation). The used dataset can be found in the evaluation/datasets folder.
