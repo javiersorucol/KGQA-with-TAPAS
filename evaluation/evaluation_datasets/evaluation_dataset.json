@@ -114,6 +114,9 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : "SELECT ?team WHERE { wd:Q41421 p:P54 ?statement. ?statement ps:P54 ?team. ?statement pq:P580 ?starttime. ?statement pq:P582 ?endtime. ?team wdt:P118 wd:Q155223 . } ORDER BY ?starttime LIMIT 1"
+            },
             "answer": {
                 "answerType": "entity",
                 "answer": [
@@ -302,7 +305,7 @@
                 }
             ],
             "query" : {
-                "sparql" : "PENDING"
+                "sparql" : "SELECT ?president ?starttime ?endtime WHERE { wd:Q30 p:P6 ?statement. ?statement ps:P6 ?president. ?statement pq:P580 ?starttime. ?statement pq:P582 ?endtime. } ORDER BY ?starttime LIMIT 1 OFFSET 11 "
             },
             "answer": {
                 "answerType": "entity",
@@ -533,6 +536,9 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : "SELECT ?capital WHERE { wd:Q30 p:P36 ?statement. ?statement ps:P36 ?capital. ?statement pq:P580 ?starttime. ?statement pq:P582 ?endtime. } ORDER BY ?starttime LIMIT 1 "
+            },
             "answer": {
                 "answerType": "entity",
                 "answer": [
@@ -590,6 +596,9 @@
                     ]
                 }
             ],
+            "query" : {
+                "sparql" : ""
+            },
             "answer": {
                 "answerType": "entity",
                 "answer": [

@@ -118,7 +118,7 @@ if not Path(linking_data_path).exists():
 
 else:
     # If index exists load it
-    vector_store = FAISS.load_local(linking_data_path, embeddings.embed_query)
+    vector_store = FAISS.load_local(linking_data_path, embeddings.embed_query, allow_dangerous_deserialization=True)
     print('Entities index loaded')
 
 # Initialize retrievers
@@ -144,8 +144,8 @@ def link_data_main(question : Question_DTO):
     global main_entity_prompt_template
     
     # We will call the chosen method (gpt v1) and run it with the main template
-    return link_with_embeddings_to_graphdb(question=question)
-    #return link_data_with_OpenAI(question=question, prompt_template=main_entity_prompt_template)
+    #return link_with_embeddings_to_graphdb(question=question)
+    return link_data_with_OpenAI(question=question, prompt_template=main_entity_prompt_template)
 
 @app.post(linking_service.get('link_endpoint_gpt_v1'))
 def link_data_with_OpenAI(question : Question_DTO, prompt_template : str = ner_prompt_template):
